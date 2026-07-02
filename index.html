@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Football DNA Simulator ⚽</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #111726;
+    --card: #161d2e;
+    --card2: #1d2740;
+    --line: #2a3654;
+    --txt: #e8edf7;
+    --muted: #8b97b3;
+    --accent: #25d07a;
+    --accent2: #36a3ff;
+    --gold: #f6c453;
+    --rare: #c06bff;
+    --bad: #ff5c6c;
+    --radius: 14px;
+    --shadow: 0 8px 30px rgba(0,0,0,.45);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #16203a 0%, var(--bg) 60%);
+    color: var(--txt);
+    min-height: 100vh;
+    line-height: 1.45;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 80px; }
+  .screen { display: none; animation: fade .35s ease; }
+  .screen.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  h1, h2, h3 { margin: 0 0 .4em; }
+  .muted { color: var(--muted); }
+
+  .btn {
+    border: 1px solid var(--line);
+    background: var(--card2);
+    color: var(--txt);
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .08s ease, background .15s, border-color .15s;
+  }
+  .btn:hover { background: #243152; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.primary { background: linear-gradient(135deg, var(--accent), #18a45e); border-color: transparent; color: #06210f; }
+  .btn.primary:hover { filter: brightness(1.08); background: linear-gradient(135deg, var(--accent), #18a45e); }
+  .btn.ghost { background: transparent; }
+  .btn.big { font-size: 18px; padding: 16px 30px; }
+  .btn.danger { border-color: var(--bad); color: var(--bad); }
+
+  /* ---------- Welcome ---------- */
+  .hero { text-align: center; padding: 60px 16px; }
+  .hero h1 { font-size: clamp(34px, 7vw, 64px); letter-spacing: 1px;
+    background: linear-gradient(135deg, #fff, var(--accent2), var(--accent));
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero .sub { font-size: 18px; color: var(--muted); margin-bottom: 8px; }
+  .hero .goal { display: inline-block; margin: 18px 0 28px; padding: 8px 18px; border: 1px dashed var(--gold);
+    color: var(--gold); border-radius: 30px; font-weight: 700; }
+  .features { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 30px; }
+  .feature { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px 16px; width: 220px; text-align: left; }
+  .feature b { color: var(--accent2); }
+
+  /* ---------- Genesis ---------- */
+  .genesis-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .pill { background: var(--card); border: 1px solid var(--line); padding: 8px 14px; border-radius: 30px; font-weight: 700; }
+  .pill .accent { color: var(--accent); }
+  .genesis-grid { display: grid; grid-template-columns: 1fr 320px; gap: 18px; }
+  @media (max-width: 880px) { .genesis-grid { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
+  .attr-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+  .attr-head h2 { color: var(--gold); }
+  #roll-result { min-height: 180px; margin: 12px 0; }
+  .placeholder { color: var(--muted); text-align: center; padding: 50px 10px; border: 2px dashed var(--line); border-radius: 12px; }
+
+  .spinner-team { text-align: center; font-size: 30px; font-weight: 800; padding: 56px 0; animation: pulse .15s infinite alternate; }
+  .spinner-year { display: block; font-size: 16px; color: var(--accent2); }
+  @keyframes pulse { from { opacity: .7; } to { opacity: 1; } }
+
+  .roll-landed { margin-bottom: 12px; }
+  .year-chip { background: var(--accent2); color: #04223f; padding: 1px 8px; border-radius: 6px; font-weight: 700; font-size: 13px; }
+  .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .donor-card { position: relative; text-align: left; background: var(--card2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 10px 8px; cursor: pointer; color: var(--txt); transition: .12s; }
+  .donor-card:hover { border-color: var(--accent2); transform: translateY(-2px); }
+  .donor-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+  .donor-badge { position: absolute; top: 6px; right: 8px; font-weight: 800; color: var(--gold); font-size: 16px; }
+  .donor-name { font-weight: 700; font-size: 14px; padding-right: 24px; }
+  .donor-value { color: var(--accent); font-size: 13px; margin: 2px 0; }
+  .donor-mini { color: var(--muted); font-size: 11px; }
+  .selected-donor { margin-top: 12px; padding: 10px 12px; background: #14361f; border: 1px solid var(--accent); border-radius: 8px; }
+
+  .genesis-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+
+  .preview h3 { color: var(--accent2); font-size: 15px; }
+  .prev-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .prev-row.empty { color: var(--muted); }
+  .prev-val { font-weight: 700; color: var(--accent); }
+  .prev-src { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
+
+  /* ---------- Confirm ---------- */
+  .rating-hero { text-align: center; padding: 14px; }
+  .rating-num { font-size: 70px; font-weight: 900; line-height: 1;
+    background: linear-gradient(135deg, var(--gold), #ff9d3c); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .rating-label { letter-spacing: 3px; color: var(--muted); font-size: 13px; }
+  .playstyle-chip { display: inline-block; margin: 10px 6px 0; background: var(--accent2); color: #04223f; padding: 4px 14px; border-radius: 30px; font-weight: 700; }
+  .ment-chip { display: inline-block; margin-top: 10px; background: var(--card2); border: 1px solid var(--line); padding: 6px 14px; border-radius: 30px; font-size: 13px; }
+  .ment-chip.rare { border-color: var(--rare); color: var(--rare); }
+  .dna-table, .dna-key { margin-top: 16px; }
+  .dna-row { display: grid; grid-template-columns: 130px 70px 1fr; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .dna-k { color: var(--muted); }
+  .dna-v { font-weight: 800; color: var(--accent); }
+  .dna-s { color: var(--muted); font-size: 12px; text-align: right; }
+  .name-field { margin: 18px 0; }
+  .name-field input { width: 100%; padding: 14px; font-size: 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg2); color: var(--txt); }
+
+  /* ---------- Career ---------- */
+  .career-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .career-head h2 { color: var(--gold); font-size: 26px; }
+  .hdr-stats { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hdr-stat { background: var(--card); border: 1px solid var(--line); padding: 6px 12px; border-radius: 8px; font-size: 13px; }
+  .hdr-stat b { color: var(--accent); }
+  .goal-progress { margin: 14px 0; background: var(--bg2); border: 1px solid var(--line); border-radius: 30px; height: 22px; position: relative; overflow: hidden; }
+  #goal-progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--gold)); transition: width .6s ease; }
+  #goal-progress-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+
+  .career-grid { display: grid; grid-template-columns: 1fr 340px; gap: 18px; margin-top: 16px; }
+  @media (max-width: 880px) { .career-grid { grid-template-columns: 1fr; } }
+
+  .simming { text-align: center; padding: 30px; color: var(--accent2); font-weight: 700; animation: pulse .4s infinite alternate; }
+  .season-prompt { margin-bottom: 12px; color: var(--muted); }
+  .result-banner { padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-bottom: 12px; }
+  .result-banner.great { background: #123a22; color: var(--accent); }
+  .result-banner.good { background: #14304a; color: var(--accent2); }
+  .result-banner.ok { background: var(--card2); }
+  .result-banner.bad { background: #3a2a14; color: var(--gold); }
+  .result-banner.awful { background: #3a1620; color: var(--bad); }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
+  .stat-box { background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; text-align: center; }
+  .sb-num { font-size: 26px; font-weight: 900; color: var(--accent); }
+  .sb-lab { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+  .decision { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--accent2); border-radius: 12px; padding: 16px; }
+  .decision.milestone-event { border-color: var(--gold); box-shadow: 0 0 24px rgba(246,196,83,.25); }
+  .decision-tag { display: inline-block; font-size: 11px; letter-spacing: 2px; color: var(--accent2); border: 1px solid var(--accent2); padding: 2px 10px; border-radius: 20px; margin-bottom: 10px; }
+  .milestone-event .decision-tag { color: var(--gold); border-color: var(--gold); }
+  .decision-text { font-size: 16px; margin-bottom: 14px; }
+  .decision-choices { display: flex; flex-direction: column; gap: 8px; }
+  .btn.choice { text-align: left; }
+  .transfer { background: var(--card2); border: 1px solid var(--gold); border-radius: 12px; padding: 16px; }
+  .offers { display: grid; gap: 8px; margin: 12px 0; }
+  .btn.offer { text-align: left; }
+  .offer-club { font-weight: 800; }
+  .offer-meta { color: var(--muted); font-size: 12px; }
+
+  .log-panel h3 { color: var(--accent2); font-size: 15px; }
+  #career-log { max-height: 560px; overflow-y: auto; padding-right: 6px; }
+  .log-entry { font-size: 13px; padding: 8px 10px; border-radius: 8px; margin-bottom: 6px; background: var(--bg2); border-left: 3px solid var(--line); }
+  .log-entry.milestone { border-left-color: var(--gold); }
+  .log-entry.decision { border-left-color: var(--accent2); background: #10243a; }
+  .log-entry.transfer { border-left-color: var(--rare); }
+  .log-entry.intl { border-left-color: #ff8a3c; }
+  .log-entry.great { border-left-color: var(--accent); }
+  .log-entry.bad, .log-entry.awful { border-left-color: var(--bad); }
+
+  /* ---------- Legacy ---------- */
+  .legacy { text-align: center; padding: 30px 10px; }
+  .legacy-status { font-size: clamp(26px, 5vw, 44px); font-weight: 900; letter-spacing: 1px; }
+  .legacy-status.god { background: linear-gradient(135deg, var(--gold), #ff7b3c); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .legacy-status.legend { color: var(--accent2); }
+  .legacy-big { font-size: 90px; font-weight: 900; color: var(--accent); line-height: 1; margin: 10px 0; }
+  .legacy-big-lab { color: var(--muted); letter-spacing: 3px; }
+  .legacy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 28px 0; }
+  .leg-box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .leg-num { font-size: 28px; font-weight: 900; color: var(--gold); }
+  .leg-lab { font-size: 12px; color: var(--muted); }
+  .dna-summary { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 10px 0 18px; }
+  .tag { background: var(--card2); border: 1px solid var(--line); padding: 5px 14px; border-radius: 30px; font-weight: 700; font-size: 13px; }
+  .tag.rare { border-color: var(--rare); color: var(--rare); }
+  .legacy-dna { max-width: 620px; margin: 0 auto; text-align: left; }
+
+  .footer-note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 40px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================= SCREEN 1: WELCOME ================= -->
+  <section id="screen-welcome" class="screen active">
+    <div class="hero">
+      <h1>FOOTBALL DNA SIMULATOR ⚽</h1>
+      <div class="sub">Build a striker from 8 different football eras</div>
+      <div class="goal">🎯 GOAL: 1000 CAREER GOALS</div>
+      <div><button class="btn primary big" id="btn-start">START CREATION</button></div>
+      <div class="features">
+        <div class="feature"><b>8-Roll Draft</b><br/>Each attribute comes from a different Premier League squad &amp; era.</div>
+        <div class="feature"><b>Reroll Gamble</b><br/>3 rerolls to chase the perfect donor for each stat.</div>
+        <div class="feature"><b>Career RPG</b><br/>Simulate 20+ seasons with mentality-driven decisions &amp; narrative flags.</div>
+        <div class="feature"><b>The Chase</b><br/>League, cups, Europe &amp; England goals all count toward 1000.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SCREEN 2: GENESIS ================= -->
+  <section id="screen-genesis" class="screen">
+    <div class="genesis-top">
+      <h2>CHARACTER CREATION</h2>
+      <div>
+        <span class="pill"><span class="accent" id="roll-counter">Roll 1 of 8</span></span>
+        <span class="pill">Rerolls: <span class="accent" id="reroll-count">3</span></span>
+      </div>
+    </div>
+    <div class="genesis-grid">
+      <div class="panel">
+        <div class="attr-head">
+          <h2 id="attr-name">Heading Ability</h2>
+        </div>
+        <div class="muted" id="attr-desc">Aerial threat — wins headers and attacks crosses.</div>
+        <div id="roll-result"><div class="placeholder">Press <strong>SPIN</strong> to begin.</div></div>
+        <div class="genesis-actions">
+          <button class="btn primary" id="btn-spin">🎲 SPIN</button>
+          <button class="btn primary" id="btn-accept" style="display:none">✓ ACCEPT</button>
+          <button class="btn" id="btn-reroll" style="display:none">↻ REROLL</button>
+        </div>
+      </div>
+      <div class="panel preview" id="player-preview"></div>
+    </div>
+  </section>
+
+  <!-- ================= SCREEN 3: CONFIRM ================= -->
+  <section id="screen-confirm" class="screen">
+    <h2>PLAYER PROFILE</h2>
+    <div class="panel" id="confirm-card"></div>
+    <div class="name-field">
+      <label class="muted" for="player-name-input">Name your player</label>
+      <input id="player-name-input" type="text" placeholder="e.g. Marcus Steel" maxlength="28" />
+    </div>
+    <button class="btn primary big" id="btn-confirm-career">START CAREER SIMULATION ▶</button>
+  </section>
+
+  <!-- ================= SCREEN 4: CAREER ================= -->
+  <section id="screen-career" class="screen">
+    <div class="career-head">
+      <h2 id="career-season">SEASON 1</h2>
+      <div class="hdr-stats">
+        <div class="hdr-stat">Age <b id="hdr-age">17</b></div>
+        <div class="hdr-stat">Goals <b id="hdr-goals">0</b></div>
+        <div class="hdr-stat">Club <b id="hdr-club">—</b></div>
+        <div class="hdr-stat">Rep <b id="hdr-rep">Unknown</b></div>
+      </div>
+    </div>
+    <div class="goal-progress"><div id="goal-progress-fill"></div><div id="goal-progress-label">0 / 1000 career goals</div></div>
+
+    <div class="career-grid">
+      <div>
+        <div class="panel" id="season-result" style="margin-bottom:14px"></div>
+        <div class="panel" id="season-action"></div>
+      </div>
+      <div class="panel log-panel">
+        <h3>Career Log</h3>
+        <div id="career-log"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SCREEN 5: LEGACY ================= -->
+  <section id="screen-legacy" class="screen">
+    <div class="legacy">
+      <div class="legacy-status" id="legacy-status">CAREER COMPLETE</div>
+      <div class="legacy-big" id="legacy-goals">0</div>
+      <div class="legacy-big-lab">CAREER GOALS</div>
+      <div class="legacy-grid" id="legacy-grid"></div>
+      <div class="legacy-dna" id="legacy-dna"></div>
+      <div style="margin-top:28px"><button class="btn primary big btn-play-again">PLAY AGAIN ↻</button></div>
+    </div>
+  </section>
+
+  <div class="footer-note">Inspired by 38-0.app · Premier League donor data (1992–2024 real squads) is editable in <code>data.js</code>.</div>
+</div>
+
+<script src="data.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
