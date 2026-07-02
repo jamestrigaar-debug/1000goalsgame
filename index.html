@@ -34,10 +34,10 @@
   .screen { display: none; animation: fade .35s ease; }
   .screen.active { display: block; }
   @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
- 
+
   h1, h2, h3 { margin: 0 0 .4em; }
   .muted { color: var(--muted); }
- 
+
   .btn {
     border: 1px solid var(--line);
     background: var(--card2);
@@ -57,7 +57,7 @@
   .btn.ghost { background: transparent; }
   .btn.big { font-size: 18px; padding: 16px 30px; }
   .btn.danger { border-color: var(--bad); color: var(--bad); }
- 
+
   /* ---------- Welcome ---------- */
   .hero { text-align: center; padding: 60px 16px; }
   .hero h1 { font-size: clamp(34px, 7vw, 64px); letter-spacing: 1px;
@@ -70,24 +70,24 @@
   .feature { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
     padding: 14px 16px; width: 220px; text-align: left; }
   .feature b { color: var(--accent2); }
- 
+
   /* ---------- Genesis ---------- */
   .genesis-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
   .pill { background: var(--card); border: 1px solid var(--line); padding: 8px 14px; border-radius: 30px; font-weight: 700; }
   .pill .accent { color: var(--accent); }
   .genesis-grid { display: grid; grid-template-columns: 1fr 320px; gap: 18px; }
   @media (max-width: 880px) { .genesis-grid { grid-template-columns: 1fr; } }
- 
+
   .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
   .attr-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
   .attr-head h2 { color: var(--gold); }
   #roll-result { min-height: 180px; margin: 12px 0; }
   .placeholder { color: var(--muted); text-align: center; padding: 50px 10px; border: 2px dashed var(--line); border-radius: 12px; }
- 
+
   .spinner-team { text-align: center; font-size: 30px; font-weight: 800; padding: 56px 0; animation: pulse .15s infinite alternate; }
   .spinner-year { display: block; font-size: 16px; color: var(--accent2); }
   @keyframes pulse { from { opacity: .7; } to { opacity: 1; } }
- 
+
   .roll-landed { margin-bottom: 12px; }
   .year-chip { background: var(--accent2); color: #04223f; padding: 1px 8px; border-radius: 6px; font-weight: 700; font-size: 13px; }
   .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
@@ -100,15 +100,15 @@
   .donor-value { color: var(--accent); font-size: 13px; margin: 2px 0; }
   .donor-mini { color: var(--muted); font-size: 11px; }
   .selected-donor { margin-top: 12px; padding: 10px 12px; background: #14361f; border: 1px solid var(--accent); border-radius: 8px; }
- 
+
   .genesis-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
- 
+
   .preview h3 { color: var(--accent2); font-size: 15px; }
   .prev-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
   .prev-row.empty { color: var(--muted); }
   .prev-val { font-weight: 700; color: var(--accent); }
   .prev-src { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
- 
+
   /* ---------- Confirm ---------- */
   .rating-hero { text-align: center; padding: 14px; }
   .rating-num { font-size: 70px; font-weight: 900; line-height: 1;
@@ -124,7 +124,7 @@
   .dna-s { color: var(--muted); font-size: 12px; text-align: right; }
   .name-field { margin: 18px 0; }
   .name-field input { width: 100%; padding: 14px; font-size: 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg2); color: var(--txt); }
- 
+
   /* ---------- Career ---------- */
   .career-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
   .career-head h2 { color: var(--gold); font-size: 26px; }
@@ -134,10 +134,10 @@
   .goal-progress { margin: 14px 0; background: var(--bg2); border: 1px solid var(--line); border-radius: 30px; height: 22px; position: relative; overflow: hidden; }
   #goal-progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--gold)); transition: width .6s ease; }
   #goal-progress-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
- 
+
   .career-grid { display: grid; grid-template-columns: 1fr 340px; gap: 18px; margin-top: 16px; }
   @media (max-width: 880px) { .career-grid { grid-template-columns: 1fr; } }
- 
+
   .simming { text-align: center; padding: 30px; color: var(--accent2); font-weight: 700; animation: pulse .4s infinite alternate; }
   .season-prompt { margin-bottom: 12px; color: var(--muted); }
   .result-banner { padding: 10px 14px; border-radius: 10px; font-weight: 700; margin-bottom: 12px; }
@@ -150,7 +150,7 @@
   .stat-box { background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; text-align: center; }
   .sb-num { font-size: 26px; font-weight: 900; color: var(--accent); }
   .sb-lab { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
- 
+
   .decision { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--accent2); border-radius: 12px; padding: 16px; }
   .decision.milestone-event { border-color: var(--gold); box-shadow: 0 0 24px rgba(246,196,83,.25); }
   .decision-tag { display: inline-block; font-size: 11px; letter-spacing: 2px; color: var(--accent2); border: 1px solid var(--accent2); padding: 2px 10px; border-radius: 20px; margin-bottom: 10px; }
@@ -163,7 +163,7 @@
   .btn.offer { text-align: left; }
   .offer-club { font-weight: 800; }
   .offer-meta { color: var(--muted); font-size: 12px; }
- 
+
   .log-panel h3 { color: var(--accent2); font-size: 15px; }
   #career-log { max-height: 560px; overflow-y: auto; padding-right: 6px; }
   .log-entry { font-size: 13px; padding: 8px 10px; border-radius: 8px; margin-bottom: 6px; background: var(--bg2); border-left: 3px solid var(--line); }
@@ -173,7 +173,7 @@
   .log-entry.intl { border-left-color: #ff8a3c; }
   .log-entry.great { border-left-color: var(--accent); }
   .log-entry.bad, .log-entry.awful { border-left-color: var(--bad); }
- 
+
   /* ---------- Legacy ---------- */
   .legacy { text-align: center; padding: 30px 10px; }
   .legacy-status { font-size: clamp(26px, 5vw, 44px); font-weight: 900; letter-spacing: 1px; }
@@ -189,9 +189,9 @@
   .tag { background: var(--card2); border: 1px solid var(--line); padding: 5px 14px; border-radius: 30px; font-weight: 700; font-size: 13px; }
   .tag.rare { border-color: var(--rare); color: var(--rare); }
   .legacy-dna { max-width: 620px; margin: 0 auto; text-align: left; }
- 
+
   .footer-note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 40px; }
- 
+
   /* ---------- Alpha 1.1 additions ---------- */
   .chooser-label { color: var(--muted); font-size: 13px; margin: 10px 0 6px; }
   .attr-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
@@ -214,12 +214,12 @@
   .syn-note { font-size: 13px; padding: 6px 10px; border-radius: 8px; margin-bottom: 6px; background: var(--bg2); border-left: 3px solid var(--line); }
   .syn-note.good { border-left-color: var(--accent); }
   .syn-note.bad { border-left-color: var(--bad); color: #ffb0b8; }
- 
+
   .season-honours { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
   .hon-badge { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--line); }
   .hon-badge.title { color: var(--gold); border-color: var(--gold); }
   .hon-badge.award { color: var(--accent2); border-color: var(--accent2); }
- 
+
   .league-details { margin-top: 14px; }
   .league-details summary { cursor: pointer; color: var(--accent2); font-weight: 700; font-size: 13px; padding: 6px 0; }
   .league-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
@@ -232,7 +232,7 @@
   .league-table tr.ucl td:first-child { color: var(--accent2); }
   .league-table tr.uel td:first-child { color: var(--accent); }
   .league-table tr.releg td:first-child { color: var(--bad); }
- 
+
   .honours-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
   .hon-item { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
   .hon-ic { font-size: 20px; }
@@ -251,7 +251,7 @@
 </head>
 <body>
 <div class="wrap">
- 
+
   <!-- ================= SCREEN 1: WELCOME ================= -->
   <section id="screen-welcome" class="screen active">
     <div class="hero">
@@ -268,7 +268,7 @@
       </div>
     </div>
   </section>
- 
+
   <!-- ================= SCREEN 2: GENESIS ================= -->
   <section id="screen-genesis" class="screen">
     <div class="genesis-top">
@@ -294,7 +294,7 @@
       <div class="panel preview" id="player-preview"></div>
     </div>
   </section>
- 
+
   <!-- ================= SCREEN 3: CONFIRM ================= -->
   <section id="screen-confirm" class="screen">
     <h2>PLAYER PROFILE</h2>
@@ -305,7 +305,7 @@
     </div>
     <button class="btn primary big" id="btn-confirm-career">START CAREER SIMULATION ▶</button>
   </section>
- 
+
   <!-- ================= SCREEN 4: CAREER ================= -->
   <section id="screen-career" class="screen">
     <div class="career-head">
@@ -318,7 +318,7 @@
       </div>
     </div>
     <div class="goal-progress"><div id="goal-progress-fill"></div><div id="goal-progress-label">0 / 1000 career goals</div></div>
- 
+
     <div class="career-grid">
       <div>
         <div class="panel" id="season-result" style="margin-bottom:14px"></div>
@@ -330,7 +330,7 @@
       </div>
     </div>
   </section>
- 
+
   <!-- ================= SCREEN 5: LEGACY ================= -->
   <section id="screen-legacy" class="screen">
     <div class="legacy">
@@ -346,10 +346,10 @@
       <div style="margin-top:28px"><button class="btn primary big btn-play-again">PLAY AGAIN ↻</button></div>
     </div>
   </section>
- 
+
   <div class="footer-note">Football DNA Simulator · Alpha 1.1 · Inspired by 38-0.app · Premier League donor data (1992–2024 real squads, peak ratings) is editable in <code>data.js</code>.</div>
 </div>
- 
+
 <script src="data.js"></script>
 <script src="game.js"></script>
 </body>

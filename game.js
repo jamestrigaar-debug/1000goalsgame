@@ -12,7 +12,7 @@
  * ========================================================================== */
 (function () {
   "use strict";
- 
+
   const D = window.GAME_DATA;
   const {
     MENTALITY_TRAITS,
@@ -23,7 +23,7 @@
     ACADEMY_STARTING_POOL,
     NATIONAL_TEAM,
   } = D;
- 
+
   /* --------------------------- CONFIG / LEVERS --------------------------- */
   // The 7 attributes drafted from Team+Era squads (chosen in any order).
   const ATTRS = [
@@ -39,7 +39,7 @@
   // skill attributes that receive hidden-influence blending
   const HIDDEN_KEYS = ["heading", "fitness", "strength", "leftFoot", "rightFoot", "speed"];
   const HIDDEN_WEIGHT = 0.25;
- 
+
   const LEVERS = {
     startRerolls: 3,
     goalTarget: 1000,
@@ -49,14 +49,14 @@
     injuryFreqMax: 5,
     debutAge: 17,
   };
- 
+
   const SQUAD_KEYS = Object.keys(PLAYER_DATABASE);
   const CLUB_KEYS = Object.keys(CLUB_ACADEMY);
   const LEAGUE_CLUBS = Object.keys(TEAM_DATABASE);
- 
+
   /* ------------------------------ STATE --------------------------------- */
   let state = null;
- 
+
   function freshState() {
     return {
       // genesis
@@ -91,7 +91,7 @@
       finalSeasonForced: false,
     };
   }
- 
+
   /* ------------------------------ UTILS --------------------------------- */
   const rand = Math.random;
   function randInt(min, max) { return Math.floor(rand() * (max - min + 1)) + min; }
@@ -100,7 +100,7 @@
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
   function round1(v) { return Math.round(v * 10) / 10; }
   function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
- 
+
   function poissonRandom(lambda) {
     if (lambda <= 0) return 0;
     const L = Math.exp(-lambda);
@@ -122,40 +122,40 @@
   }
   function mentTag(trait) { return (MENTALITY_TRAITS[trait] || {}).tag || "neutral"; }
   function mentIsSpecial(trait) { return !!(MENTALITY_TRAITS[trait] || {}).special; }
- 
+
   function showScreen(id) {
     document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
- 
+
   /* ============================ GENESIS ================================= */
   function startCreation() {
     state = freshState();
     showScreen("screen-genesis");
     beginTurn();
   }
- 
+
   function remainingAttrs() {
     return ATTRS.filter((a) => !state.player.slots[a.key]);
   }
- 
+
   function beginTurn() {
     state.currentSpin = null;
     state.chosenAttr = null;
     state.selectedDonorIdx = null;
- 
+
     const isAcademy = state.phase === "academy";
     document.getElementById("attr-name").textContent = isAcademy ? "Academy Roll" : "Roll a Squad";
     document.getElementById("attr-desc").textContent = isAcademy
       ? "Roll a Premier League club — whichever comes up decides which academy your striker graduated from."
       : "Spin to draw a random squad & era, then choose which attribute to draft from it.";
- 
+
     const done = ATTRS.length - remainingAttrs().length;
     document.getElementById("roll-counter").textContent = isAcademy
       ? "Academy" : `Attribute ${done + 1} of ${ATTRS.length}`;
     document.getElementById("reroll-count").textContent = state.rerolls;
- 
+
     document.getElementById("roll-result").innerHTML =
       `<div class="placeholder">Press <strong>SPIN</strong> to ${isAcademy ? "roll a club" : "draw a squad"}.</div>`;
     setBtn("btn-spin", true);
@@ -163,13 +163,13 @@
     setBtn("btn-reroll", false);
     renderPreview();
   }
- 
+
   function setBtn(id, show) {
     const b = document.getElementById(id);
     b.style.display = show ? "inline-block" : "none";
     if (id === "btn-spin") b.disabled = !show;
   }
- 
+
   function spin() {
     document.getElementById("btn-spin").disabled = true;
     const target = document.getElementById("roll-result");
@@ -187,7 +187,7 @@
       if (++ticks >= totalTicks) { clearInterval(iv); isAcademy ? landClub() : landSquad(); }
     }, 80);
   }
- 
+
   /* ---- attribute squad roll ---- */
   function landSquad() {
     const squadKey = choice(SQUAD_KEYS);
@@ -195,7 +195,7 @@
     state.currentSpin = { squadKey, team, year };
     renderAttrChooser();
   }
- 
+
   function renderAttrChooser() {
     const { team, year } = state.currentSpin;
     const chips = remainingAttrs().map((a) =>
@@ -211,7 +211,7 @@
     setBtn("btn-accept", false);
     setBtn("btn-reroll", state.rerolls > 0);
   }
- 
+
   function statForAttr(key, pl) {
     switch (key) {
       case "heading": case "leftFoot": case "rightFoot": case "speed": return pl[key];
@@ -221,7 +221,7 @@
       default: return pl.overall || 0;
     }
   }
- 
+
   function donorValueText(key, pl) {
     switch (key) {
       case "heading": return `Heading ${pl.heading}`;
@@ -234,7 +234,7 @@
       default: return "";
     }
   }
- 
+
   function chooseAttr(key) {
     state.chosenAttr = key;
     state.selectedDonorIdx = null;
@@ -246,7 +246,7 @@
     const squad = PLAYER_DATABASE[squadKey]
       .map((pl, idx) => ({ pl, idx }))
       .sort((a, b) => statForAttr(key, b.pl) - statForAttr(key, a.pl));
- 
+
     const cards = squad.map(({ pl, idx }) => {
       const badge = statForAttr(key, pl);
       const tierChip = pl.tier ? `<span class="legend-chip">${pl.tier}</span>` : "";
@@ -258,7 +258,7 @@
           <div class="donor-value">${donorValueText(key, pl)}</div>
         </button>`;
     }).join("");
- 
+
     document.getElementById("roster-slot").innerHTML = `
       <div class="chooser-label">Pick the <strong>${cfg.name}</strong> donor (sorted best → worst):</div>
       <div class="roster-grid">${cards}</div>
@@ -266,7 +266,7 @@
     document.querySelectorAll("#roster-slot .donor-card").forEach((c) =>
       c.addEventListener("click", () => selectDonor(parseInt(c.dataset.idx, 10))));
   }
- 
+
   function selectDonor(idx) {
     state.selectedDonorIdx = idx;
     const { squadKey } = state.currentSpin;
@@ -278,7 +278,7 @@
     setBtn("btn-accept", true);
     setBtn("btn-reroll", state.rerolls > 0);
   }
- 
+
   /* ---- academy club roll ---- */
   function landClub() {
     const club = choice(CLUB_KEYS);
@@ -296,7 +296,7 @@
     setBtn("btn-accept", true);
     setBtn("btn-reroll", state.rerolls > 0);
   }
- 
+
   function accept() {
     if (state.phase === "academy") {
       if (!state.currentSpin || !state.currentSpin.club) return;
@@ -315,11 +315,11 @@
     else if (key === "mentality") { slot.value = pl.mentality; slot.rating = pl.mentalityRating; }
     else slot.value = pl[key];
     state.player.slots[key] = slot;
- 
+
     if (remainingAttrs().length === 0) { state.phase = "academy"; }
     beginTurn();
   }
- 
+
   function reroll() {
     if (state.rerolls <= 0) return;
     state.rerolls--;
@@ -328,7 +328,7 @@
     setBtn("btn-reroll", false);
     spin();
   }
- 
+
   function renderPreview() {
     const wrap = document.getElementById("player-preview");
     const slots = state.player.slots;
@@ -347,12 +347,12 @@
     wrap.innerHTML = `<h3>Your DNA so far</h3>${rows}${acad}
       <div class="preview-hint">Every donor you pick secretly nudges your other attributes — trade-offs are real.</div>`;
   }
- 
+
   /* ==================== COMPILE: HIDDEN INFLUENCE + SYNERGY ============== */
   function compilePlayer() {
     const slots = state.player.slots;
     const donors = Object.values(slots).map((s) => s.donorObj);
- 
+
     // explicit picks
     const explicit = {
       heading: slots.heading.donorObj.heading,
@@ -373,33 +373,33 @@
     // height/weight taken straight from the size donor (no blend)
     attrs.height = slots.size.donorObj.height;
     attrs.weight = slots.size.donorObj.weight;
- 
+
     // mentality: trait from the mentality donor; hidden rating nudged by locker-room average
     const mSource = slots.mentality.donorObj;
     const otherRatings = donors.filter((d) => d !== mSource).map((d) => d.mentalityRating);
     const avgMent = otherRatings.reduce((s, r) => s + r, 0) / (otherRatings.length || 1);
     state.mentality = mSource.mentality;
     state.mentalityRating = Math.round(clamp(mSource.mentalityRating * 0.8 + avgMent * 0.2, 15, 99));
- 
+
     // physical build synergy
     const syn = applyPhysicalSynergy(attrs);
     state.attrs = syn.attrs;
     state.synergyNotes = syn.notes;
     state.derived = deriveStats(syn.attrs);
- 
+
     state.academyTier = state.academy.tier;
     state.baseRating = calculateStrikerRating(state.attrs);
     state.playstyle = inferPlaystyle(state.attrs);
- 
+
     renderConfirm();
     showScreen("screen-confirm");
   }
- 
+
   function hostSlotFor(k) {
     if (k === "fitness" || k === "strength") return "body";
     return k; // heading, leftFoot, rightFoot, speed
   }
- 
+
   function applyPhysicalSynergy(a0) {
     const a = Object.assign({}, a0);
     const notes = [];
@@ -424,7 +424,7 @@
     if (h <= 174 && a.speed >= 88 && Math.max(a.leftFoot, a.rightFoot) >= 85) notes.push({ good: true, text: "SYNERGY: nimble poacher — small, fast & clinical." });
     return { attrs: a, notes };
   }
- 
+
   function deriveStats(a) {
     const foot = Math.max(a.leftFoot, a.rightFoot);
     const agility = Math.round(clamp(a.speed * 0.55 + (188 - a.height) * 0.9 + 22, 30, 99));
@@ -432,7 +432,7 @@
     const dribbling = Math.round(clamp(a.speed * 0.4 + foot * 0.35 + agility * 0.2, 30, 99));
     return { agility, balance, dribbling, finishing: Math.round(foot * 0.7 + Math.min(a.leftFoot, a.rightFoot) * 0.3) };
   }
- 
+
   function calculateStrikerRating(a) {
     const bestFoot = Math.max(a.leftFoot, a.rightFoot);
     const finishing = bestFoot * 0.7 + Math.min(a.leftFoot, a.rightFoot) * 0.3;
@@ -441,7 +441,7 @@
       a.strength * 0.12 + a.fitness * 0.10 + ((a.leftFoot + a.rightFoot) / 2) * 0.08;
     return Math.round(clamp(rating, 40, 99));
   }
- 
+
   function inferPlaystyle(a) {
     if (a.heading >= 88 && a.height >= 189) return "Target Man";
     if (a.speed >= 90) return "Pace Merchant";
@@ -450,7 +450,7 @@
     if (state.derived && state.derived.dribbling >= 85) return "Dribbler";
     return "Complete Forward";
   }
- 
+
   function renderConfirm() {
     const a = state.attrs, dv = state.derived;
     const card = document.getElementById("confirm-card");
@@ -476,7 +476,7 @@
       <div class="dna-table">${rows}</div>
       <div class="synergy-block"><h3>Physical Build Synergy</h3>${synHtml}</div>`;
   }
- 
+
   /* ============================ CAREER START =========================== */
   function startCareer() {
     const nameInput = document.getElementById("player-name-input");
@@ -488,17 +488,17 @@
     ensureClubStat(state.club);
     state.season = 1;
     state.age = LEVERS.debutAge + (tier === "Strong" || tier === "World Class" ? 0 : randInt(0, 1));
- 
+
     showScreen("screen-career");
     log(`🎬 ${state.player.name} begins their career at ${state.club} (${tier} academy). The chase for ${LEVERS.goalTarget} goals starts now.`, "milestone");
     renderCareerHeader();
     renderSeasonReady();
   }
- 
+
   function ensureClubStat(club) {
     if (!state.clubStats[club]) state.clubStats[club] = { apps: 0, goals: 0, assists: 0, seasons: 0, titles: 0 };
   }
- 
+
   /* ====================== CAREER SIMULATION ENGINE ====================== */
   function getAgeModifier(age) {
     if (age <= 20) return 0.7 + (age - 17) * 0.1;
@@ -513,7 +513,7 @@
     r *= 1 + (state.mentalityRating - 60) / 400;
     return r;
   }
- 
+
   const TACTICAL = {
     Possession: { strongVs: ["Direct", "Route One"], weakVs: ["High Press"], atk: 1.0, mid: 1.08, chaos: 0 },
     "High Press": { strongVs: ["Possession"], weakVs: ["Counter"], atk: 1.04, def: 0.98, chaos: 6 },
@@ -552,7 +552,7 @@
     homeXG = Math.max(0.1, homeXG); awayXG = Math.max(0.1, awayXG);
     return { homeGoals: poissonRandom(homeXG), awayGoals: poissonRandom(awayXG) };
   }
- 
+
   function getTacticalFitMultiplier(playstyle, teamStyle) {
     const fit = {
       "Target Man": { Direct: 1.25, "Route One": 1.2, "Park the Bus": 0.85, Possession: 0.95 },
@@ -585,7 +585,7 @@
     if (state.flags.redemptionArc) f += 4;
     return f;
   }
- 
+
   function newTable() {
     const t = {};
     LEAGUE_CLUBS.forEach((c) => (t[c] = { team: c, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, Pts: 0 }));
@@ -599,7 +599,7 @@
     return Object.values(table).sort((a, b) =>
       b.Pts - a.Pts || (b.GF - b.GA) - (a.GF - a.GA) || b.GF - a.GF || a.team.localeCompare(b.team));
   }
- 
+
   function simulateSeason() {
     const club = state.club;
     ensureClubStat(club);
@@ -613,7 +613,7 @@
     const appearanceChance = { Star: 0.97, Starter: 0.9, Rotation: 0.6, Bench: 0.3 }[state.role] || 0.7;
     const mentClutch = mentTag(state.mentality);
     const clutchBonus = ["clutch", "winner", "talisman"].includes(mentClutch) ? state.mentalityRating / 100 : 0;
- 
+
     // injuries
     const fitness = state.attrs.fitness;
     let gamesMissed = randInt(LEVERS.injuryFreqMin, LEVERS.injuryFreqMax) +
@@ -621,9 +621,9 @@
     if (fitness >= 90) gamesMissed = Math.max(0, gamesMissed - 2);
     if (["workrate"].includes(mentClutch)) gamesMissed = Math.max(0, gamesMissed - 1);
     gamesMissed = clamp(gamesMissed, 0, 30);
- 
+
     let leagueGoals = 0, assists = 0, apps = 0, cleanSheets = 0, playerMatch = 0;
- 
+
     for (const h of LEAGUE_CLUBS) {
       for (const a of LEAGUE_CLUBS) {
         if (h === a) continue;
@@ -650,26 +650,26 @@
         if (myGoals - mine > 0 && rand() < 0.35) assists += poissonRandom((myGoals - mine) * 0.25);
       }
     }
- 
+
     // cup + european goals (all comps count toward 1000)
     const compFactor = { Elite: 0.5, Europe: 0.36, Mid: 0.18, Lower: 0.08 }[clubData.league] || 0.15;
     const cupEuroGoals = poissonRandom(leagueGoals * compFactor);
     const cupApps = Math.round(cupEuroGoals * 1.3) + (apps > 0 ? randInt(2, 6) : 0);
     const seasonGoals = leagueGoals + cupEuroGoals;
     apps += cupApps;
- 
+
     // cards
     let yellow = poissonRandom(apps * 0.14);
     let red = rand() < (mentClutch === "aggressive" || mentClutch === "negative" ? 0.09 : 0.03) ? 1 : 0;
     if (mentClutch === "aggressive" || mentClutch === "negative") yellow += poissonRandom(2);
- 
+
     // finalize table
     const sorted = sortedTable(table);
     const pos = sorted.findIndex((r) => r.team === club) + 1;
     const champion = sorted[0].team;
     const trajectory = trajectoryFromPos(pos);
     state.leagueTable = sorted;
- 
+
     // season rating (influenced by hidden mentality consistency)
     const mentVar = mentClutch === "volatile" ? randomBetween(-0.6, 0.6) : 0;
     const seasonRating = round1(clamp(6.0 + (seasonGoals / Math.max(apps, 1)) * 4.2 +
@@ -677,7 +677,7 @@
     state.bestRating = Math.max(state.bestRating, seasonRating);
     const perfTier = performanceTier(seasonGoals, apps, state.role);
     state.lastPerformanceTier = perfTier;
- 
+
     // ----- honours & awards -----
     const honoursThisSeason = [];
     if (champion === club) {
@@ -725,7 +725,7 @@
     if (perfTier === "Sensational" || perfTier === "Overperformed" || seasonRating >= 8.0) {
       state.honours.tots++; awards.push("Team of the Season");
     }
- 
+
     // totals
     state.totalGoals += seasonGoals;
     state.leagueGoals += leagueGoals;
@@ -736,13 +736,13 @@
     state.teamCleanSheets += cleanSheets;
     const cs = state.clubStats[club];
     cs.apps += apps; cs.goals += seasonGoals; cs.assists += assists; cs.seasons++;
- 
+
     // reputation drift
     let repDelta = { Sensational: 12, Overperformed: 7, "Met Expectation": 2, Underperformed: -3, Flop: -7 }[perfTier];
     if (champion === club) repDelta += 4;
     if (awards.includes("Ballon d'Or")) repDelta += 6;
     adjustReputation(repDelta);
- 
+
     const seasonData = {
       season: state.season, age: state.age, club, role: state.role,
       goals: seasonGoals, leagueGoals, assists, apps, rating: seasonRating,
@@ -752,7 +752,7 @@
     state.seasonHistory.push(seasonData);
     return seasonData;
   }
- 
+
   function trajectoryFromPos(pos) {
     if (pos === 1) return "Title";
     if (pos <= 6) return "Europe";
@@ -786,7 +786,7 @@
     state.reputation = clamp(state.reputation + delta, 0, 100);
     state.reputationTier = reputationTier(state.reputation);
   }
- 
+
   /* ---------------------- INTERNATIONAL CAREER -------------------------- */
   function simulateInternational() {
     if (!state.intlDebut && state.reputation >= 45) {
@@ -817,7 +817,7 @@
     }
     return { games, goals: g, isTournament, wonTrophy };
   }
- 
+
   /* ------------------------- DECISION ENGINE ---------------------------- */
   const EVENTS = [
     { id: "breakout", category: "PERFORMANCE", base: 6, req: { perf: ["Overperformed", "Sensational"], ageMax: 24 },
@@ -878,9 +878,9 @@
       text: (n) => `Pundits queue up to criticise ${n} after a poor run.`,
       choices: [{ label: "Respond with a classy interview", fx: { rep: 2 } }, { label: "Hit back at the critics", fx: { rep: -2, flag: "mediaTarget" } }] },
   ];
- 
+
   const FLAG_DEFAULT_DURATION = 2;
- 
+
   function buildContext(sd) {
     return {
       mentality: state.mentality, mentTag: mentTag(state.mentality), mentRating: state.mentalityRating,
@@ -915,7 +915,7 @@
     if (ctx.flags.injuryProne && ev.category === "INJURY") w += 6;
     return Math.max(0, w);
   }
- 
+
   const MILESTONES = [
     { goals: 100, title: "Local Hero" }, { goals: 250, title: "Club Legend" },
     { goals: 500, title: "Generational Talent" }, { goals: 750, title: "All-Time Great" },
@@ -939,7 +939,7 @@
     if (!eligible.length) return null;
     return weightedRandomPick(eligible);
   }
- 
+
   function applyEffects(fx) {
     if (!fx) return;
     if (fx.rep) adjustReputation(fx.rep);
@@ -955,7 +955,7 @@
     for (const k of Object.keys(state.flags)) { state.flags[k]--; if (state.flags[k] <= 0) delete state.flags[k]; }
     for (const k of Object.keys(state.cooldowns)) { state.cooldowns[k]--; if (state.cooldowns[k] <= 0) delete state.cooldowns[k]; }
   }
- 
+
   /* --------------------------- TRANSFERS -------------------------------- */
   function generateOffers() {
     const tierByRep = state.reputation >= 80 ? ["Elite", "Europe"] :
@@ -971,7 +971,7 @@
     }
     return offers;
   }
- 
+
   /* ------------------------------ SEASON FLOW --------------------------- */
   function renderCareerHeader() {
     document.getElementById("career-season").textContent = `SEASON ${state.season}`;
@@ -983,7 +983,7 @@
     document.getElementById("goal-progress-fill").style.width = pct + "%";
     document.getElementById("goal-progress-label").textContent = `${state.totalGoals} / ${LEVERS.goalTarget} career goals`;
   }
- 
+
   function renderSeasonReady() {
     const box = document.getElementById("season-action");
     box.innerHTML = `
@@ -991,7 +991,7 @@
       <button class="btn primary big" id="btn-play-season">▶ PLAY SEASON ${state.season}</button>`;
     document.getElementById("btn-play-season").addEventListener("click", playSeason);
   }
- 
+
   function playSeason() {
     document.getElementById("season-action").innerHTML = `<div class="simming">Simulating season ${state.season}…</div>`;
     setTimeout(() => {
@@ -1004,12 +1004,12 @@
       if (sd.awards.length) line += ` 🎖 ${sd.awards.join(", ")}.`;
       if (intl && intl.goals) line += ` 🦁 +${intl.goals} for England.`;
       log(line, perfClass(sd.perfTier));
- 
+
       const ev = pickSeasonEvent(buildContext(sd));
       if (ev) presentDecision(ev, sd, intl); else proceedToTransfer(sd, intl);
     }, 400);
   }
- 
+
   function renderSeasonResult(sd, intl) {
     const box = document.getElementById("season-result");
     const intlHtml = intl ? `<div class="stat-box"><div class="sb-num">${intl.goals}</div><div class="sb-lab">England</div></div>` : "";
@@ -1028,7 +1028,7 @@
       </div>
       ${renderLeagueTable(sd)}`;
   }
- 
+
   function renderLeagueTable(sd) {
     if (!state.leagueTable) return "";
     const rows = state.leagueTable.map((r, i) => {
@@ -1042,7 +1042,7 @@
       <table class="league-table"><thead><tr><th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th></tr></thead>
       <tbody>${rows}</tbody></table></details>`;
   }
- 
+
   function presentDecision(ev, sd, intl) {
     const box = document.getElementById("season-action");
     const name = state.player.name;
@@ -1065,7 +1065,7 @@
       });
     });
   }
- 
+
   function proceedToTransfer(sd, intl) {
     if (state.totalGoals >= LEVERS.goalTarget) { beginRetirement("goal"); return; }
     state.yearsAtClub++;
@@ -1077,7 +1077,7 @@
     if (wantsMove && !(loyalStay && !state.pendingTransfer)) presentTransfer(generateOffers(), sd, intl);
     else advanceToNextSeason();
   }
- 
+
   function presentTransfer(offers, sd, intl) {
     const box = document.getElementById("season-action");
     const cards = offers.map((o, i) => {
@@ -1100,13 +1100,13 @@
       advanceToNextSeason();
     });
   }
- 
+
   function moveToClub(club) {
     log(`   ↳ ✈️ Transfer: ${state.player.name} joins ${club} (${TEAM_DATABASE[club].league}).`, "transfer");
     state.club = club; state.clubsPlayed.add(club); ensureClubStat(club);
     state.yearsAtClub = 0; state.pendingTransfer = false;
   }
- 
+
   function advanceToNextSeason() {
     decayFlags();
     if (state.injuryProneSeasons > 0) state.injuryProneSeasons--;
@@ -1118,7 +1118,7 @@
     document.getElementById("season-result").innerHTML = "";
     renderSeasonReady();
   }
- 
+
   /* --------------------- END-OF-CAREER EVENTS --------------------------- */
   const END_EVENTS = [
     { id: "immediate_retire", base: 6, text: (n) => `${n} calls time on a storied career, hanging up the boots for good.`,
@@ -1138,7 +1138,7 @@
     { id: "testimonial", base: 4, req: (s) => s.honours.leagueTitles > 0 || s.reputation >= 70, text: (n) => `A packed stadium turns out for ${n}'s legendary testimonial match.`,
       choices: [{ label: "Soak up the adoration", fx: { rep: 2 } }] },
   ];
- 
+
   function beginRetirement(reason) {
     state.endCareerReason = reason;
     // reached the 1000-goal target -> celebrate straight to legacy
@@ -1147,7 +1147,7 @@
     const ev = weightedRandomPick(eligible) || END_EVENTS[0];
     presentEndEvent(ev);
   }
- 
+
   function presentEndEvent(ev) {
     const box = document.getElementById("season-action");
     document.getElementById("season-result").innerHTML = "";
@@ -1166,7 +1166,7 @@
       });
     });
   }
- 
+
   function handleEndChoice(fx, text, label) {
     fx = fx || {};
     log(`   ↳ 🎬 ${text.replace(/\.$/, "")} → "${label}"`, "milestone");
@@ -1190,7 +1190,7 @@
     if (fx.epilogue) state.epilogue = fx.epilogue;
     endCareer(false);
   }
- 
+
   /* ----------------------------- LEGACY --------------------------------- */
   function endCareer(reachedGoal) {
     state.retired = true;
@@ -1200,7 +1200,7 @@
     statusEl.textContent = won ? "⚽ FOOTBALL GOD — 1000 GOALS!" : (state.totalGoals >= 500 ? "LEGENDARY CAREER!" : "CAREER COMPLETE");
     statusEl.className = "legacy-status " + (won ? "god" : (state.totalGoals >= 500 ? "legend" : ""));
     document.getElementById("legacy-goals").textContent = state.totalGoals;
- 
+
     document.getElementById("legacy-grid").innerHTML = [
       ["Seasons", state.season], ["Clubs", state.clubsPlayed.size], ["Final Age", state.age],
       ["Apps", state.totalApps], ["Assists", state.totalAssists], ["League Goals", state.leagueGoals],
@@ -1208,14 +1208,14 @@
       ["England Caps", state.intlCaps], ["England Goals", state.intlGoals],
       ["Best Rating", state.bestRating || "—"], ["Peak Rep", `${state.reputationTier}`],
     ].map(([k, v]) => `<div class="leg-box"><div class="leg-num">${v}</div><div class="leg-lab">${k}</div></div>`).join("");
- 
+
     renderHonours();
     renderClubBreakdown();
     renderCompetitionHistory();
     renderEpilogue();
     renderLegacyDNA();
   }
- 
+
   function renderHonours() {
     const h = state.honours;
     const items = [
@@ -1230,7 +1230,7 @@
     el.innerHTML = "<h3>Honours & Awards</h3><div class='honours-grid'>" +
       items.map(([ic, k, v]) => `<div class="hon-item"><span class="hon-ic">${ic}</span><span class="hon-count">${v}×</span><span class="hon-name">${k}</span></div>`).join("") + "</div>";
   }
- 
+
   function renderClubBreakdown() {
     const clubs = Object.entries(state.clubStats).filter(([, s]) => s.apps > 0)
       .sort((a, b) => b[1].goals - a[1].goals);
@@ -1241,7 +1241,7 @@
       <table class="league-table clubs-table"><thead><tr><th>Club</th><th>Sea</th><th>Apps</th><th>Goals</th><th>Ast</th><th>🏆</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
- 
+
   function renderCompetitionHistory() {
     const el = document.getElementById("legacy-history");
     if (!state.competitionHistory.length) { el.innerHTML = ""; return; }
@@ -1249,7 +1249,7 @@
       `<li><span class="hist-season">S${c.season}</span> ${esc(c.text)}</li>`).join("");
     el.innerHTML = `<h3>Trophy Cabinet Timeline</h3><ul class="history-list">${items}</ul>`;
   }
- 
+
   function renderEpilogue() {
     const el = document.getElementById("legacy-epilogue");
     const map = {
@@ -1266,7 +1266,7 @@
     if (state.epilogue && map[state.epilogue]) parts.push(map[state.epilogue]);
     el.innerHTML = parts.length ? `<div class="epilogue">${parts.map((p) => `<div>${p}</div>`).join("")}</div>` : "";
   }
- 
+
   function renderLegacyDNA() {
     const a = state.attrs;
     document.getElementById("legacy-dna").innerHTML = `
@@ -1284,7 +1284,7 @@
       </div>`;
     function dnaLine(label, v) { return `<div class="dna-row"><span class="dna-k">${label}</span><span class="dna-v">${v}</span></div>`; }
   }
- 
+
   /* ----------------------------- LOG ------------------------------------ */
   function log(text, cls) {
     state.careerLog.unshift({ text, cls });
@@ -1302,7 +1302,7 @@
   function perfClass(tier) {
     return { Sensational: "great", Overperformed: "good", "Met Expectation": "ok", Underperformed: "bad", Flop: "awful" }[tier] || "";
   }
- 
+
   /* ----------------------------- WIRING --------------------------------- */
   function init() {
     document.getElementById("btn-start").addEventListener("click", startCreation);

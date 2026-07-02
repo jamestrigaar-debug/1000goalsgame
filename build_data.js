@@ -12,10 +12,10 @@
  * ========================================================================== */
 const fs = require("fs");
 const path = require("path");
- 
+
 const ATTACH = "/home/ubuntu/attachments";
 const OUT = "/home/ubuntu/football-dna-simulator/data.js";
- 
+
 /* ---- deterministic RNG (seeded per player id, for peak-rating stability) ---- */
 function seedFrom(str) {
   let h = 2166136261 >>> 0;
@@ -35,7 +35,7 @@ function mulberry32(a) {
 }
 const ri = (rng, lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
 const pick = (rng, arr) => arr[Math.floor(rng() * arr.length)];
- 
+
 /* ------------------------------------------------------------------ *
  * MENTALITY SYSTEM (hidden rating + descriptive trait)
  * ~75% neutral/balanced, ~25% rarer & more impactful (some negative).
@@ -44,7 +44,7 @@ const NEUTRAL_TRAITS = ["Calm", "Composed", "Professional", "Steady", "Balanced"
   "Grounded", "Level-Headed", "Measured", "Reliable", "Focused", "Diligent",
   "Team Player", "Dependable", "Unflappable", "Adaptable", "Consistent",
   "Quiet", "Modest", "Honest", "Understated"];
- 
+
 // special traits: [name, min, max, tag]
 const SPECIAL_TRAITS = [
   ["Leader", 74, 88, "leader"],
@@ -61,7 +61,7 @@ const SPECIAL_TRAITS = [
   ["Temperamental", 28, 58, "negative"],
 ];
 const SPECIAL_POSITIVE = SPECIAL_TRAITS.filter((t) => t[3] !== "negative" && t[3] !== "volatile");
- 
+
 function pickMentality(rng, isLegend) {
   if (isLegend) {
     if (rng() < 0.8) {
@@ -77,7 +77,7 @@ function pickMentality(rng, isLegend) {
   }
   return { trait: pick(rng, NEUTRAL_TRAITS), rating: ri(rng, 44, 70) };
 }
- 
+
 /* ------------------------------------------------------------------ *
  * POSITION GROUPS + attribute ranges
  * ------------------------------------------------------------------ */
@@ -93,7 +93,7 @@ function posGroup(pos) {
   if (p.includes("forward") || p.includes("striker")) return "FW";
   return "CM";
 }
- 
+
 const RANGES = {
   GK: { heading: [70, 88], speed: [40, 62], strength: [70, 88], defH: 190 },
   CB: { heading: [70, 90], speed: [55, 74], strength: [72, 92], defH: 187 },
@@ -104,7 +104,7 @@ const RANGES = {
   WG: { heading: [48, 68], speed: [80, 97], strength: [56, 76], defH: 177 },
   FW: { heading: [66, 90], speed: [70, 92], strength: [66, 88], defH: 184 },
 };
- 
+
 // headline attributes by position group (the ones lifted highest for legends)
 const HEADLINE = {
   GK: ["strength", "heading"],
@@ -116,7 +116,7 @@ const HEADLINE = {
   WG: ["speed"],
   FW: ["heading", "speed"],
 };
- 
+
 function parseHeight(h, defH) {
   if (!h) return defH;
   const m = String(h).replace("m", "").replace(",", ".").trim();
@@ -124,7 +124,7 @@ function parseHeight(h, defH) {
   if (isNaN(v) || v < 1.4 || v > 2.2) return defH;
   return Math.round(v * 100);
 }
- 
+
 /* ------------------------------------------------------------------ *
  * LEGENDS — tiered peak ratings. Matched by accent-insensitive name.
  * ------------------------------------------------------------------ */
@@ -164,7 +164,7 @@ for (const tier of Object.keys(LEGEND_TIERS)) {
     if (!(k in LEGENDS)) LEGENDS[k] = tier; // first (best) tier wins
   }
 }
- 
+
 function computeOverall(a, g) {
   // generic peak overall from attributes, position-weighted
   const foot = Math.max(a.leftFoot, a.rightFoot);
@@ -175,7 +175,7 @@ function computeOverall(a, g) {
     return Math.round(a.heading * 0.28 + a.strength * 0.30 + a.speed * 0.16 + a.fitness * 0.16 + foot * 0.10);
   return Math.round(a.strength * 0.22 + a.speed * 0.20 + a.heading * 0.18 + a.fitness * 0.20 + foot * 0.20);
 }
- 
+
 function transformPlayer(pl) {
   // seed by player ID only -> identical peak attributes across all seasons
   const seedKey = String(pl.id || pl.name);
@@ -185,7 +185,7 @@ function transformPlayer(pl) {
   const height = parseHeight(pl.height, R.defH);
   const bmi = 22.0 + rng() * 2.2;
   const weight = Math.round(bmi * Math.pow(height / 100, 2));
- 
+
   const a = {
     heading: ri(rng, R.heading[0], R.heading[1]),
     speed: ri(rng, R.speed[0], R.speed[1]),
@@ -197,7 +197,7 @@ function transformPlayer(pl) {
   if (foot === "left") { a.leftFoot = ri(rng, 80, 96); a.rightFoot = ri(rng, 52, 70); }
   else if (foot === "both") { a.leftFoot = ri(rng, 76, 90); a.rightFoot = ri(rng, 76, 90); }
   else { a.rightFoot = ri(rng, 80, 96); a.leftFoot = ri(rng, 50, 68); }
- 
+
   const tier = LEGENDS[normName(pl.name)];
   const isLegend = !!tier;
   if (isLegend) {
@@ -211,12 +211,12 @@ function transformPlayer(pl) {
     if (a.leftFoot >= a.rightFoot) { lift("leftFoot", info.overall); lift("rightFoot", info.floor - 10); }
     else { lift("rightFoot", info.overall); lift("leftFoot", info.floor - 10); }
   }
- 
+
   const ment = pickMentality(rng, isLegend);
   let overall = computeOverall(a, g);
   if (isLegend) overall = Math.max(overall, TIER_INFO[tier].overall);
   overall = Math.min(99, overall);
- 
+
   return {
     name: pl.name, pos: g,
     heading: a.heading, fitness: a.fitness, strength: a.strength,
@@ -226,7 +226,7 @@ function transformPlayer(pl) {
     overall, tier: tier || "",
   };
 }
- 
+
 /* ------------------------------------------------------------------ *
  * Gather files -> DB keyed by "Club (Year)"
  * ------------------------------------------------------------------ */
@@ -238,7 +238,7 @@ function parseFile(base) {
   name = name.replace(/\s*-\s*\d{4}\s*$/, "").trim();
   return { club: name, year };
 }
- 
+
 const files = [];
 for (const d of fs.readdirSync(ATTACH)) {
   const dir = path.join(ATTACH, d);
@@ -247,7 +247,7 @@ for (const d of fs.readdirSync(ATTACH)) {
     if (f.endsWith(".json")) files.push(path.join(dir, f));
   }
 }
- 
+
 const DB = {};
 const clubs = new Set();
 let totalPlayers = 0, legendCount = 0;
@@ -271,7 +271,7 @@ for (const fp of files) {
   }
   clubs.add(club);
 }
- 
+
 /* ------------------------------------------------------------------ *
  * CLUB -> ACADEMY TIER (used by the academy club-roll)
  * ------------------------------------------------------------------ */
@@ -298,19 +298,19 @@ const ACADEMY_TIER_BY_CLUB = {
 const clubList = Array.from(clubs).sort();
 const CLUB_ACADEMY = {};
 for (const c of clubList) CLUB_ACADEMY[c] = ACADEMY_TIER_BY_CLUB[c] || "Average";
- 
+
 /* ------------------------------------------------------------------ *
  * SERIALIZE the whole data.js
  * ------------------------------------------------------------------ */
 function esc(s) { return String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"'); }
- 
+
 const MENTALITY_META = (() => {
   const m = {};
   for (const n of NEUTRAL_TRAITS) m[n] = { special: false, tag: "neutral" };
   for (const [n, , , tag] of SPECIAL_TRAITS) m[n] = { special: true, tag };
   return m;
 })();
- 
+
 const HEADER = `/* ============================================================================
  * FOOTBALL DNA SIMULATOR — DATA FILE  (auto-generated by build_data.js)
  * Alpha 1.1: peak ratings, hidden-rating mentalities, club->academy mapping.
@@ -320,11 +320,11 @@ const HEADER = `/* =============================================================
  *   leftFoot, rightFoot, speed, mentality (trait), mentalityRating (HIDDEN),
  *   overall (peak), tier (legend tier or "")
  * ========================================================================== */
- 
+
 /* Mentality traits — the numeric rating is HIDDEN from the player in-game;
  * only the descriptive trait is shown. \`special\` traits are rarer & impactful. */
 const MENTALITY_TRAITS = ${JSON.stringify(MENTALITY_META, null, 2)};
- 
+
 /* Academy tiers -> development flavour. */
 const ACADEMY_TIERS = {
   "World Class": { flavor: "Elite production line — 'wonderkid' expectations." },
@@ -332,19 +332,19 @@ const ACADEMY_TIERS = {
   "Average": { flavor: "Standard grounding — solid but unspectacular." },
   "Weak": { flavor: "Unfashionable setup — the ultimate underdog story." },
 };
- 
+
 /* Every club present in the data, mapped to its academy tier.
  * The academy club-roll draws from these. */
 const CLUB_ACADEMY = ${JSON.stringify(CLUB_ACADEMY, null, 2)};
- 
+
 /* Helper to keep squads compact.
  * Order: name, pos, heading, fitness, strength, height, weight, LF, RF, speed, mentality, mentalityRating, overall, tier */
 function p(name, pos, heading, fitness, strength, height, weight, leftFoot, rightFoot, speed, mentality, mentalityRating, overall, tier) {
   return { name, pos, heading, fitness, strength, height, weight, leftFoot, rightFoot, speed, mentality, mentalityRating, overall, tier: tier || "" };
 }
- 
+
 `;
- 
+
 function playerLine(p) {
   return `    p("${esc(p.name)}","${p.pos}",${p.heading},${p.fitness},${p.strength},${p.height},${p.weight},${p.leftFoot},${p.rightFoot},${p.speed},"${esc(p.mentality)}",${p.mentalityRating},${p.overall}${p.tier ? `,"${p.tier}"` : ""}),`;
 }
@@ -356,7 +356,7 @@ for (const k of keys) {
   dbOut += "  ],\n";
 }
 dbOut += "};\n\n";
- 
+
 const FOOTER = `/* ============================ TEAM DATABASE ============================
  * Clubs the career simulation places the player at & builds league tables from.
  * ====================================================================== */
@@ -382,7 +382,7 @@ const TEAM_DATABASE = {
   "Sheffield United": { attack: 64, midfield: 65, defence: 66, manager: 68, tacticalStyle: "Park the Bus", homeAdvantage: 7, league: "Lower" },
   "Luton Town": { attack: 63, midfield: 64, defence: 64, manager: 70, tacticalStyle: "Route One", homeAdvantage: 8, league: "Lower" },
 };
- 
+
 /* Academy tier -> pool of realistic starting clubs (by league band). */
 const ACADEMY_STARTING_POOL = {
   "World Class": ["Manchester City", "Liverpool", "Arsenal", "Manchester United", "Chelsea"],
@@ -390,10 +390,10 @@ const ACADEMY_STARTING_POOL = {
   "Average": ["West Ham", "Crystal Palace", "Brentford", "Fulham", "Wolves"],
   "Weak": ["Everton", "Nottingham Forest", "Bournemouth", "Burnley", "Sheffield United", "Luton Town"],
 };
- 
+
 /* National team for the international track. */
 const NATIONAL_TEAM = { name: "England", attack: 84, midfield: 82, defence: 82, manager: 82, tacticalStyle: "Possession", homeAdvantage: 6 };
- 
+
 /* Expose to game.js. */
 if (typeof window !== "undefined") {
   window.GAME_DATA = {
@@ -407,7 +407,7 @@ if (typeof window !== "undefined") {
   };
 }
 `;
- 
+
 fs.writeFileSync(OUT, HEADER + dbOut + FOOTER);
 console.log("squads:", keys.length, "players:", totalPlayers);
 console.log("clubs:", clubList.length);
