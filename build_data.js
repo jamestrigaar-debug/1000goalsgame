@@ -2,6 +2,9 @@
  * BUILD SCRIPT — generates data.js from 686 Premier League roster JSON files.
  * Emits the FULL data.js (constants + PLAYER_DATABASE + exports).
  *
+ * Source data lives in /home/trigaar/Downloads/DATA_JSON/ (Season_1992..Season_2024).
+ * Run with: node build_data.js /path/to/DATA_JSON ./data.js
+ *
  * Alpha 1.1 changes:
  *  - Peak ratings: each player is seeded by their ID only, so the SAME player
  *    has identical (peak) attributes across every season/squad they appear in.
@@ -13,8 +16,8 @@
 const fs = require("fs");
 const path = require("path");
 
-const ATTACH = "/home/ubuntu/attachments";
-const OUT = "/home/ubuntu/football-dna-simulator/data.js";
+const ATTACH = process.env.ATTACH_DIR || (process.argv[2] || "./attachments");
+const OUT = process.env.OUT_FILE || (process.argv[3] || "./data.js");
 
 /* ---- deterministic RNG (seeded per player id, for peak-rating stability) ---- */
 function seedFrom(str) {
@@ -35,6 +38,61 @@ function mulberry32(a) {
 }
 const ri = (rng, lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
 const pick = (rng, arr) => arr[Math.floor(rng() * arr.length)];
+
+/* ------------------------------------------------------------------ *
+ * CSV PARSER (handles quoted fields for EA FC data)
+ * ------------------------------------------------------------------ */
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    const next = text[i + 1];
+    if (inQuotes) {
+      if (c === '"') {
+        if (next === '"') { cell += '"'; i++; }
+        else { inQuotes = false; }
+      } else { cell += c; }
+    } else {
+      if (c === '"') { inQuotes = true; }
+      else if (c === ',') { row.push(cell); cell = ""; }
+      else if (c === '\n' || c === '\r') {
+        if (cell.length || row.length) { row.push(cell); rows.push(row); row = []; cell = ""; }
+      } else { cell += c; }
+    }
+  }
+  if (cell.length || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+function normName(s) {
+  return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+function loadEAFC(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+  const rows = parseCSV(fs.readFileSync(filePath, "utf8"));
+  if (rows.length < 2) return {};
+  const headers = rows[0];
+  const out = {};
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (r.length < headers.length) continue;
+    const obj = {};
+    for (let j = 0; j < headers.length; j++) obj[headers[j]] = r[j];
+    const name = (obj.commonName || `${obj.firstName || ""} ${obj.lastName || ""}`).trim();
+    if (!name) continue;
+    out[normName(name)] = obj;
+  }
+  return out;
+}
+
+const EAFC_DIR = path.join(__dirname, "data");
+const EAFC_OUTFIELD = loadEAFC(path.join(EAFC_DIR, "ea_fc26_players.csv"));
+const EAFC_GK = loadEAFC(path.join(EAFC_DIR, "ea_fc26_goalkeepers.csv"));
+const EAFC = { ...EAFC_OUTFIELD, ...EAFC_GK };
 
 /* ------------------------------------------------------------------ *
  * MENTALITY SYSTEM (hidden rating + descriptive trait)
@@ -95,14 +153,16 @@ function posGroup(pos) {
 }
 
 const RANGES = {
-  GK: { heading: [70, 88], speed: [40, 62], strength: [70, 88], defH: 190 },
-  CB: { heading: [70, 90], speed: [55, 74], strength: [72, 92], defH: 187 },
-  FB: { heading: [58, 74], speed: [70, 90], strength: [62, 80], defH: 179 },
-  DM: { heading: [60, 80], speed: [60, 78], strength: [68, 86], defH: 182 },
-  CM: { heading: [55, 74], speed: [62, 82], strength: [62, 82], defH: 180 },
-  AM: { heading: [50, 70], speed: [70, 88], strength: [58, 76], defH: 178 },
-  WG: { heading: [48, 68], speed: [80, 97], strength: [56, 76], defH: 177 },
-  FW: { heading: [66, 90], speed: [70, 92], strength: [66, 88], defH: 184 },
+  // Audit bands: Average/Squad 65-79, Below Average 55-64, Low 45-54.
+  // Non-legend base generation is weighted into Average/Squad and Below Average.
+  GK: { heading: [46, 76], speed: [38, 60], strength: [52, 78], defH: 190 },
+  CB: { heading: [55, 80], speed: [48, 70], strength: [58, 82], defH: 187 },
+  FB: { heading: [42, 66], speed: [60, 84], strength: [46, 70], defH: 179 },
+  DM: { heading: [48, 72], speed: [52, 74], strength: [54, 76], defH: 182 },
+  CM: { heading: [45, 68], speed: [54, 76], strength: [48, 72], defH: 180 },
+  AM: { heading: [40, 64], speed: [60, 84], strength: [42, 66], defH: 178 },
+  WG: { heading: [35, 60], speed: [68, 90], strength: [38, 64], defH: 177 },
+  FW: { heading: [50, 78], speed: [60, 84], strength: [50, 78], defH: 184 },
 };
 
 // headline attributes by position group (the ones lifted highest for legends)
@@ -126,43 +186,241 @@ function parseHeight(h, defH) {
 }
 
 /* ------------------------------------------------------------------ *
- * LEGENDS — tiered peak ratings. Matched by accent-insensitive name.
+ * LEGENDS — audit-calibrated tiered peak ratings.
+ * L = Legendary (95-99), E = Elite (90-94), VG = Very Good (85-89),
+ * G = Good (80-84). Matched by accent-insensitive name.
  * ------------------------------------------------------------------ */
 const TIER_INFO = {
-  "S+": { overall: 93, floor: 86 },
-  "S": { overall: 90, floor: 84 },
-  "A+": { overall: 87, floor: 82 },
-  "A": { overall: 84, floor: 79 },
+  "L":  { overall: 97, floor: 90 }, // Legendary 95-99
+  "E":  { overall: 92, floor: 86 }, // Elite 90-94
+  "VG": { overall: 87, floor: 82 }, // Very Good 85-89
+  "G":  { overall: 82, floor: 76 }, // Good 80-84
 };
 const LEGEND_TIERS = {
-  "S+": ["Cristiano Ronaldo", "Thierry Henry", "Luka Modric", "Mohamed Salah", "Wayne Rooney"],
-  "S": ["Kevin De Bruyne", "Luis Suarez", "Virgil van Dijk", "Didier Drogba",
-        "Sergio Aguero", "Harry Kane", "Alan Shearer", "Patrick Vieira",
-        "Roy Keane", "Peter Schmeichel"],
-  "A+": ["Petr Cech", "Edwin van der Sar", "Alisson", "Alisson Becker", "John Terry",
-         "Rio Ferdinand", "Nemanja Vidic", "Vincent Kompany", "Ashley Cole",
-         "Tony Adams", "Steven Gerrard", "Frank Lampard", "Paul Scholes",
-         "David Silva", "Yaya Toure", "Cesc Fabregas", "Robin van Persie",
-         "Dennis Bergkamp", "Eric Cantona", "Ryan Giggs", "Robbie Fowler"],
-  "A": ["Gareth Bale", "Carlos Tevez", "Javier Mascherano", "Xabi Alonso",
-        "David de Gea", "Joe Hart", "Jens Lehmann", "Mark Schwarzer",
-        "David James", "Nigel Martyn", "David Seaman", "Jaap Stam",
-        "Jamie Carragher", "Gary Neville", "Claude Makelele", "Andy Cole",
-        "Andrew Cole", "Jermain Defoe", "James Milner", "Gareth Barry",
-        "Gary Speed", "Emile Heskey", "Phil Neville", "Nicolas Anelka",
-        "Michael Owen", "Steve McManaman", "Rio Ferdinand", "Teddy Sheringham",
-        "Ian Wright", "Les Ferdinand", "Matt Le Tissier", "Gianfranco Zola",
-        "Juninho", "Fernando Torres", "Wayne Bridge"],
+  "L": [
+    "Thierry Henry", "Alan Shearer", "Cristiano Ronaldo", "Wayne Rooney",
+    "Kevin De Bruyne", "Mohamed Salah", "Ryan Giggs", "Dennis Bergkamp",
+    "Erling Haaland", "Sergio Aguero", "Luis Suarez", "Peter Schmeichel",
+    "Petr Cech", "John Terry", "Virgil van Dijk", "Roy Keane", "Patrick Vieira",
+    "Steven Gerrard", "Frank Lampard", "N'Golo Kante", "Ashley Cole",
+    "Rio Ferdinand", "Nemanja Vidic", "David Silva", "Paul Scholes", "Didier Drogba",
+  ],
+  "E": [
+    "Harry Kane", "Robin van Persie", "Gareth Bale", "Eden Hazard", "Carlos Tevez",
+    "Fernando Torres", "Andy Cole", "Jermain Defoe", "Ian Wright", "Teddy Sheringham",
+    "Dwight Yorke", "Ruud van Nistelrooy", "Michael Owen", "David Beckham", "Sadio Mane",
+    "Raheem Sterling", "Son Heung-min", "Robert Pires", "Marc Overmars", "Riyad Mahrez",
+    "Alexis Sanchez", "Cesc Fabregas", "Claude Makelele", "Michael Carrick", "Xabi Alonso",
+    "Bernardo Silva", "Rodri", "Fernandinho", "Nemanja Matic", "Michael Essien",
+    "Phil Foden", "Yaya Toure", "Ricardo Carvalho", "Jaap Stam", "Sol Campbell",
+    "Ruben Dias", "Tony Adams", "William Gallas", "Steve Bruce", "Gary Pallister",
+    "Gary Neville", "Denis Irwin", "Patrice Evra", "Andy Robertson", "Trent Alexander-Arnold",
+    "David Seaman", "David de Gea", "Alisson Becker", "Ederson", "Eric Cantona", "Jamie Vardy",
+  ],
+  "VG": [
+    "Romelu Lukaku", "Emile Heskey", "Nicolas Anelka", "Demba Ba", "Peter Crouch",
+    "Les Ferdinand", "Dion Dublin", "Leroy Sane", "Andrei Kanchelskis", "Lee Sharpe",
+    "Damien Duff", "Shaun Wright-Phillips", "Antonio Valencia", "Ashley Young",
+    "Jesus Navas", "Ilkay Gundogan", "Jordan Henderson", "James Milner", "Gareth Barry",
+    "Nicky Butt", "Darren Fletcher", "Moussa Dembele", "David Ginola", "Gianfranco Zola",
+    "Matt Le Tissier", "Mesut Ozil", "Sami Hyypia", "Martin Skrtel", "Gary Cahill",
+    "Ledley King", "Wes Brown", "Kolo Toure", "Martin Keown", "Cesar Azpilicueta",
+    "Pablo Zabaleta", "Lee Dixon", "Wayne Bridge", "Gael Clichy", "Leighton Baines",
+    "Nigel Martyn", "Mark Schwarzer", "Brad Friedel", "Kasper Schmeichel", "Hugo Lloris",
+  ],
+  "G": [
+    "Danny Welbeck", "Olivier Giroud", "Gabriel Jesus", "Callum Wilson", "Danny Ings",
+    "Darren Bent", "Kevin Phillips", "Chris Sutton", "Darius Vassell", "Jay Bothroyd",
+    "Aaron Lennon", "Stewart Downing", "Adam Johnson", "Theo Walcott", "Wilfried Zaha",
+    "Adama Traore", "Matt Jarvis", "Scott Parker", "Cheick Tiote", "Lee Cattermole",
+    "Kevin Nolan", "Joey Barton", "Kieron Dyer", "Paul Ince", "Ray Parlour",
+    "Nicky Shorey", "Nigel de Jong", "Joleon Lescott", "Michael Dawson", "Wes Morgan",
+    "Robert Huth", "Ryan Shawcross", "Curtis Davies", "Phil Jones", "Chris Smalling",
+    "Glen Johnson", "Kyle Walker", "Stephen Carr", "Ryan Bertrand", "Jose Enrique",
+    "Shay Given", "Tim Howard", "Jussi Jaaskelainen", "Ben Foster", "Joe Hart",
+    "Rob Green", "Paul Robinson",
+  ],
 };
-function normName(s) {
-  return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-}
 const LEGENDS = {};
 for (const tier of Object.keys(LEGEND_TIERS)) {
   for (const name of LEGEND_TIERS[tier]) {
     const k = normName(name);
     if (!(k in LEGENDS)) LEGENDS[k] = tier; // first (best) tier wins
   }
+}
+
+/* ------------------------------------------------------------------ *
+ * ATTRIBUTE AUDIT OVERRIDES — real-world spikes per player.
+ * Each entry maps a normalised name to min/max ranges for the game
+ * attributes: speed, heading, fitness, strength, foot (strong foot).
+ * ------------------------------------------------------------------ */
+const ATTRIBUTE_OVERRIDES = {
+  // ⚡ PACE / SPEED MONSTERS
+  "Theo Walcott": { speed: [92, 96], foot: [80, 86] },
+  "Micky van de Ven": { speed: [94, 97], strength: [80, 86] },
+  "Kyle Walker": { speed: [93, 96], strength: [78, 84] },
+  "Chiedozie Ogbene": { speed: [91, 95] },
+  "Anthony Elanga": { speed: [91, 95] },
+  "Pedro Neto": { speed: [90, 94], foot: [86, 92] },
+  "Jamie Vardy": { speed: [93, 96], foot: [88, 93], strength: [78, 84] },
+  "Leroy Sane": { speed: [91, 95], foot: [86, 91] },
+  "Adama Traore": { speed: [93, 96], strength: [88, 94] },
+  "Dominik Szoboszlai": { speed: [88, 92], fitness: [85, 91] },
+  "Gabriel Martinelli": { speed: [90, 94] },
+  "Jeremie Frimpong": { speed: [91, 95] },
+  "Daniel James": { speed: [91, 95] },
+  "Anthony Gordon": { speed: [92, 96] },
+  "Jackson Tchatchoua": { speed: [94, 97] },
+  "Michael Owen": { speed: [90, 94], foot: [90, 96] },
+  "Aaron Lennon": { speed: [91, 95] },
+  "Gareth Bale": { speed: [94, 97], foot: [89, 94], strength: [86, 92] },
+  "Thierry Henry": { speed: [94, 97], foot: [95, 99], heading: [85, 91] },
+  "Cristiano Ronaldo": { speed: [91, 96], foot: [94, 99], heading: [88, 94], strength: [86, 92] },
+  "Mohamed Salah": { speed: [89, 93], foot: [90, 95] },
+  "Erling Haaland": { speed: [88, 92], foot: [94, 99], heading: [92, 98], strength: [92, 98] },
+  "Sadio Mane": { speed: [90, 94], foot: [87, 92] },
+  "Raheem Sterling": { speed: [90, 94] },
+  "Son Heung-min": { speed: [89, 93], foot: [88, 93] },
+  "Andy Robertson": { speed: [88, 92], fitness: [88, 94] },
+  "Trent Alexander-Arnold": { speed: [86, 90], foot: [85, 91] },
+  "Ashley Cole": { speed: [87, 91], fitness: [85, 90] },
+  "Patrice Evra": { speed: [87, 91], fitness: [85, 90] },
+  "Sol Campbell": { speed: [84, 88], heading: [90, 96], strength: [92, 97] },
+  "Rio Ferdinand": { speed: [85, 89] },
+  "Virgil van Dijk": { speed: [85, 89], heading: [94, 99], strength: [93, 98] },
+
+  // 🪄 DRIBBLING / SKILL
+  "Eden Hazard": { foot: [94, 99], speed: [88, 92] },
+  "Jeremy Doku": { foot: [89, 94], speed: [91, 95] },
+  "Iliman Ndiaye": { foot: [86, 91] },
+  "Bernardo Silva": { foot: [91, 96], fitness: [88, 93] },
+  "Ryan Giggs": { foot: [93, 98], speed: [88, 93], fitness: [88, 93] },
+  "Nwankwo Kanu": { foot: [86, 91] },
+  "Dimitar Berbatov": { foot: [88, 93], heading: [86, 91] },
+  "David Silva": { foot: [91, 96] },
+  "Robert Pires": { foot: [89, 94], speed: [85, 89] },
+  "Cesc Fabregas": { foot: [88, 93] },
+  "Mesut Ozil": { foot: [89, 94] },
+  "Gianfranco Zola": { foot: [90, 95] },
+  "Matt Le Tissier": { foot: [89, 94] },
+  "David Ginola": { foot: [88, 93] },
+  "Paul Scholes": { foot: [89, 94], fitness: [86, 91] },
+  "Kevin De Bruyne": { foot: [93, 98], fitness: [86, 91] },
+  "Steven Gerrard": { foot: [90, 95], fitness: [88, 93], strength: [85, 90] },
+  "Frank Lampard": { foot: [88, 93], fitness: [90, 95] },
+  "David Beckham": { foot: [89, 94], fitness: [86, 91] },
+  "Wayne Rooney": { foot: [90, 95], strength: [88, 93] },
+  "Robin van Persie": { foot: [91, 96], heading: [86, 91] },
+  "Ruud van Nistelrooy": { foot: [91, 96], heading: [87, 92] },
+  "Dennis Bergkamp": { foot: [93, 98], speed: [85, 89] },
+  "Eric Cantona": { foot: [90, 95], strength: [86, 91] },
+  "Robinho": { foot: [88, 93] },
+  "Juninho Paulista": { foot: [87, 92] },
+
+  // 🎯 FINISHING / SHOOTING
+  "Alan Shearer": { foot: [95, 99], heading: [94, 99], strength: [90, 96] },
+  "Sergio Aguero": { foot: [94, 99], speed: [86, 90] },
+  "Robbie Fowler": { foot: [93, 98] },
+  "Didier Drogba": { foot: [90, 95], heading: [90, 96], strength: [92, 97] },
+  "Luis Suarez": { foot: [93, 98], strength: [85, 90] },
+  "Harry Kane": { foot: [93, 98], heading: [89, 94] },
+  "Dwight Yorke": { foot: [88, 93], heading: [85, 90] },
+  "Ian Wright": { foot: [89, 94], heading: [85, 90] },
+  "Zlatan Ibrahimovic": { foot: [91, 96], heading: [89, 94], strength: [93, 98] },
+  "Zlatan Ibrahimović": { foot: [91, 96], heading: [89, 94], strength: [93, 98] },
+  "Jermain Defoe": { foot: [87, 92] },
+  "Nicolas Anelka": { foot: [87, 92] },
+  "Andy Cole": { foot: [88, 93], heading: [86, 91] },
+  "Teddy Sheringham": { foot: [88, 93], heading: [87, 92] },
+  "Les Ferdinand": { foot: [86, 91], heading: [87, 92] },
+  "Peter Crouch": { heading: [90, 96], foot: [78, 84] },
+  "Emile Heskey": { heading: [87, 92], strength: [88, 93] },
+  "Romelu Lukaku": { foot: [87, 92], strength: [89, 94], heading: [85, 90] },
+  "Dion Dublin": { heading: [86, 91], foot: [84, 89] },
+  "Kevin Phillips": { foot: [86, 91] },
+  "Darren Bent": { foot: [85, 90] },
+  "Danny Ings": { foot: [86, 91] },
+  "Callum Wilson": { foot: [85, 90] },
+  "Chris Sutton": { foot: [85, 90], heading: [85, 90] },
+  "Olivier Giroud": { heading: [89, 94], foot: [86, 91], strength: [86, 91] },
+  "Gabriel Jesus": { foot: [86, 91] },
+
+  // 💪 STRENGTH / PHYSICALITY
+  "Patrick Vieira": { strength: [92, 97], fitness: [88, 93], foot: [84, 89] },
+  "Roy Keane": { strength: [88, 93], fitness: [88, 93], foot: [83, 88] },
+  "N'Golo Kante": { strength: [80, 85], fitness: [94, 99] },
+  "John Terry": { strength: [91, 96], heading: [93, 98] },
+  "Nemanja Vidic": { strength: [91, 96], heading: [89, 94] },
+  "Jaap Stam": { strength: [92, 97], heading: [88, 93] },
+  "Ricardo Carvalho": { strength: [84, 89] },
+  "Michael Essien": { strength: [88, 93], fitness: [86, 91] },
+  "Yaya Toure": { strength: [89, 94], foot: [86, 91], fitness: [85, 90] },
+  "Moussa Dembele": { strength: [88, 93], foot: [86, 91] },
+  "Marouane Chamakh": { heading: [88, 93] },
+  "Marouane Fellaini": { heading: [90, 96], strength: [89, 94] },
+  "Christian Benteke": { heading: [89, 94], strength: [89, 94] },
+  "Andy Carroll": { heading: [90, 96], strength: [90, 96] },
+  "Adebayo Akinfenwa": { strength: [95, 99], heading: [85, 90] },
+  "Michail Antonio": { strength: [88, 93], heading: [86, 91] },
+  "Troy Deeney": { strength: [87, 92], heading: [85, 90] },
+  "Grant Holt": { strength: [86, 91], heading: [85, 90] },
+  "Steve Bruce": { heading: [89, 94], strength: [88, 93] },
+  "Tony Adams": { heading: [88, 93], strength: [89, 94] },
+  "Martin Keown": { heading: [87, 92], strength: [88, 93] },
+  "Gary Pallister": { heading: [87, 92], strength: [88, 93] },
+  "Sam Allardyce": { strength: [80, 85] },
+
+  // ⏱️ STAMINA / WORK RATE
+  "James Milner": { fitness: [92, 97], strength: [82, 87] },
+  "Gareth Barry": { fitness: [88, 93], foot: [82, 87] },
+  "Declan Rice": { fitness: [88, 93], strength: [85, 90] },
+  "Jordan Henderson": { fitness: [86, 91] },
+  "Michael Carrick": { fitness: [85, 90] },
+  "Phil Neville": { fitness: [85, 90] },
+  "Gary Neville": { fitness: [86, 91] },
+  "Denis Irwin": { fitness: [85, 90] },
+  "Lee Dixon": { fitness: [84, 89] },
+  "Pablo Zabaleta": { fitness: [86, 91] },
+  "Cesar Azpilicueta": { fitness: [86, 91] },
+  "Nicky Butt": { fitness: [84, 89] },
+  "Darren Fletcher": { fitness: [85, 90] },
+
+  // ✈️ HEADING / AERIAL
+  "Gary Cahill": { heading: [88, 93], strength: [87, 92] },
+  "Ledley King": { heading: [87, 92] },
+  "Kolo Toure": { heading: [85, 90] },
+  "Wes Brown": { heading: [86, 91] },
+  "Robert Huth": { heading: [87, 92], strength: [87, 92] },
+  "Ryan Shawcross": { heading: [87, 92], strength: [87, 92] },
+  "Christopher Samba": { heading: [88, 93], strength: [88, 93] },
+  "Brede Hangeland": { heading: [88, 93], strength: [87, 92] },
+  "Per Mertesacker": { heading: [89, 94], strength: [84, 89] },
+  "Laurent Koscielny": { heading: [86, 91] },
+  "Duncan Ferguson": { heading: [89, 94], strength: [89, 94] },
+  "Kevin Davies": { heading: [87, 92], strength: [88, 93] },
+
+  // 🧤 GOALKEEPER PRESENCE (mapped into physical/mental traits for drafting)
+  "Peter Schmeichel": { strength: [90, 95], heading: [84, 89] },
+  "Edwin van der Sar": { strength: [86, 91], heading: [82, 87] },
+  "David Seaman": { strength: [87, 92], heading: [83, 88] },
+  "Petr Cech": { strength: [88, 93], heading: [84, 89] },
+  "Brad Friedel": { strength: [85, 90] },
+  "Shay Given": { strength: [84, 89] },
+  "Nigel Martyn": { strength: [86, 91] },
+  "David James": { strength: [85, 90] },
+  "Alisson Becker": { strength: [88, 93], heading: [82, 87] },
+  "Ederson": { strength: [86, 91], heading: [80, 85] },
+  "Joe Hart": { strength: [86, 91], heading: [82, 87] },
+  "Hugo Lloris": { strength: [85, 90] },
+  "Kasper Schmeichel": { strength: [84, 89] },
+  "Tim Howard": { strength: [85, 90] },
+  "Jussi Jaaskelainen": { strength: [85, 90] },
+  "Ben Foster": { strength: [84, 89] },
+  "Mark Schwarzer": { strength: [84, 89] },
+};
+const ATTRIBUTE_OVERRIDES_NORM = {};
+for (const [name, overrides] of Object.entries(ATTRIBUTE_OVERRIDES)) {
+  ATTRIBUTE_OVERRIDES_NORM[normName(name)] = overrides;
 }
 
 function computeOverall(a, g) {
@@ -174,6 +432,69 @@ function computeOverall(a, g) {
   if (g === "CB" || g === "DM")
     return Math.round(a.heading * 0.28 + a.strength * 0.30 + a.speed * 0.16 + a.fitness * 0.16 + foot * 0.10);
   return Math.round(a.strength * 0.22 + a.speed * 0.20 + a.heading * 0.18 + a.fitness * 0.20 + foot * 0.20);
+}
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const toInt = (s) => { const v = parseInt(s, 10); return isNaN(v) ? 0 : v; };
+
+function applyEAFC(a, eafc, foot, isGK) {
+  // Map EA FC 26 attributes into the 5 game attributes.
+  const heading = Math.max(toInt(eafc.headingAccuracy), toInt(eafc.headingaccuracy));
+  const stamina = toInt(eafc.stamina);
+  const strength = toInt(eafc.strength);
+  const pace = toInt(eafc.pac);
+  const acceleration = toInt(eafc.acceleration);
+  const sprintSpeed = toInt(eafc.sprintSpeed);
+  const speed = Math.max(pace, Math.round((acceleration + sprintSpeed) / 2));
+
+  a.heading = clamp(heading || a.heading, 1, 99);
+  a.fitness = clamp(stamina || a.fitness, 1, 99);
+  a.strength = clamp(strength || a.strength, 1, 99);
+  a.speed = clamp(speed || a.speed, 1, 99);
+
+  if (isGK) return; // keep generated foot ratings for goalkeepers
+
+  // Foot = shooting + dribbling quality on each foot.
+  const finishing = toInt(eafc.finishing);
+  const shotPower = toInt(eafc.shotPower);
+  const dribbling = toInt(eafc.dribbling);
+  const ballControl = toInt(eafc.ballControl);
+  const positioning = toInt(eafc.positioning);
+  const strongFootVal = Math.round((finishing + shotPower + dribbling + ballControl + positioning) / 5);
+  const weakFootStars = toInt(eafc.weakFootAbility); // 1-5
+  const weakFootVal = Math.round(strongFootVal * (0.35 + 0.65 * weakFootStars / 5));
+
+  // EA FC preferredFoot: 1 = Right, 2 = Left. JSON foot overrides if present.
+  let leftStrong = false;
+  if (foot === "left") leftStrong = true;
+  else if (foot === "right") leftStrong = false;
+  else if (foot === "both") leftStrong = false;
+  else if (toInt(eafc.preferredFoot) === 2) leftStrong = true;
+
+  a.leftFoot = clamp(leftStrong ? strongFootVal : weakFootVal, 1, 99);
+  a.rightFoot = clamp(leftStrong ? weakFootVal : strongFootVal, 1, 99);
+}
+
+function applyOverrides(a, overrides, foot, rng) {
+  if (!overrides) return;
+  for (const key of Object.keys(overrides)) {
+    const [lo, hi] = overrides[key];
+    if (key === "foot") {
+      // Apply to the dominant foot (or both if foot === "both")
+      const leftStrong = foot === "left" || (foot !== "right" && a.leftFoot >= a.rightFoot);
+      const val = ri(rng, lo, hi);
+      if (foot === "both") {
+        a.leftFoot = clamp(val, 1, 99);
+        a.rightFoot = clamp(val, 1, 99);
+      } else if (leftStrong) {
+        a.leftFoot = clamp(val, 1, 99);
+      } else {
+        a.rightFoot = clamp(val, 1, 99);
+      }
+    } else {
+      a[key] = clamp(ri(rng, lo, hi), 1, 99);
+    }
+  }
 }
 
 function transformPlayer(pl) {
@@ -190,13 +511,20 @@ function transformPlayer(pl) {
     heading: ri(rng, R.heading[0], R.heading[1]),
     speed: ri(rng, R.speed[0], R.speed[1]),
     strength: ri(rng, R.strength[0], R.strength[1]),
-    fitness: ri(rng, 64, 96),
+    fitness: ri(rng, 52, 90),
     height, weight,
   };
   const foot = (pl.foot || "").toLowerCase();
-  if (foot === "left") { a.leftFoot = ri(rng, 80, 96); a.rightFoot = ri(rng, 52, 70); }
-  else if (foot === "both") { a.leftFoot = ri(rng, 76, 90); a.rightFoot = ri(rng, 76, 90); }
-  else { a.rightFoot = ri(rng, 80, 96); a.leftFoot = ri(rng, 50, 68); }
+  // Non-legend finishing is capped; legends are lifted separately.
+  if (foot === "left") { a.leftFoot = ri(rng, 70, 88); a.rightFoot = ri(rng, 48, 64); }
+  else if (foot === "both") { a.leftFoot = ri(rng, 68, 84); a.rightFoot = ri(rng, 68, 84); }
+  else { a.rightFoot = ri(rng, 72, 90); a.leftFoot = ri(rng, 48, 64); }
+
+  // EA FC 26 attribute context for current players.
+  const eafc = EAFC[normName(pl.name)];
+  if (eafc) {
+    applyEAFC(a, eafc, foot, g === "GK");
+  }
 
   const tier = LEGENDS[normName(pl.name)];
   const isLegend = !!tier;
@@ -211,6 +539,10 @@ function transformPlayer(pl) {
     if (a.leftFoot >= a.rightFoot) { lift("leftFoot", info.overall); lift("rightFoot", info.floor - 10); }
     else { lift("rightFoot", info.overall); lift("leftFoot", info.floor - 10); }
   }
+
+  // Apply real-world attribute audit overrides (pace, finishing, strength, etc.)
+  const overrides = ATTRIBUTE_OVERRIDES_NORM[normName(pl.name)];
+  applyOverrides(a, overrides, foot, rng);
 
   const ment = pickMentality(rng, isLegend);
   let overall = computeOverall(a, g);

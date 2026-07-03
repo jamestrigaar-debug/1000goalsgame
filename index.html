@@ -158,11 +158,16 @@
   .decision-text { font-size: 16px; margin-bottom: 14px; }
   .decision-choices { display: flex; flex-direction: column; gap: 8px; }
   .btn.choice { text-align: left; }
+  .contract-offer { background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
+  .contract-club { font-weight: 800; font-size: 18px; color: var(--accent); }
+  .contract-terms { font-size: 22px; font-weight: 900; margin: 4px 0; }
+  .contract-meta { color: var(--muted); font-size: 12px; }
   .transfer { background: var(--card2); border: 1px solid var(--gold); border-radius: 12px; padding: 16px; }
   .offers { display: grid; gap: 8px; margin: 12px 0; }
   .btn.offer { text-align: left; }
   .offer-club { font-weight: 800; }
   .offer-meta { color: var(--muted); font-size: 12px; }
+  .offer-contract { color: var(--gold); font-size: 11px; font-weight: 700; margin-top: 4px; }
 
   .log-panel h3 { color: var(--accent2); font-size: 15px; }
   #career-log { max-height: 560px; overflow-y: auto; padding-right: 6px; }
@@ -247,10 +252,73 @@
   .epilogue { background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 14px; font-size: 14px; line-height: 1.6; }
   .epilogue div { margin: 2px 0; }
   .decision.endcareer { border-color: var(--gold); box-shadow: 0 0 24px rgba(246,196,83,.2); }
+  .difficulty-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; max-width: 480px; margin: 0 auto; }
+  .difficulty-card { flex-direction: column; padding: 18px 14px; text-align: center; }
+  .difficulty-card .diff-name { font-size: 18px; font-weight: 800; letter-spacing: 1px; margin-bottom: 4px; }
+  .difficulty-card .diff-detail { font-size: 12px; color: var(--muted); }
+  .difficulty-card:hover { border-color: var(--accent); }
+  .club-assigned { margin-top: 16px; padding: 14px; background: var(--card2); border: 1px solid var(--line); border-radius: 10px; text-align: center; }
+  .club-assigned-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .club-assigned-name { font-size: 22px; font-weight: 800; color: var(--accent); }
+  .club-assigned-tier { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .club-offers { margin-top: 16px; }
+  .club-offers-label { font-size: 14px; margin-bottom: 10px; color: var(--muted); }
+  .club-offers-grid { display: flex; flex-direction: column; gap: 10px; }
+  .club-offer-card { display: block; text-align: left; padding: 14px; background: var(--card2); border: 2px solid var(--line); border-radius: 10px; cursor: pointer; transition: border-color .15s; }
+  .club-offer-card:hover { border-color: var(--accent); }
+  .club-offer-card.selected { border-color: var(--accent); box-shadow: 0 0 12px rgba(58,134,255,.2); }
+  .club-offer-name { font-size: 18px; font-weight: 700; }
+  .club-offer-tier { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .club-offer-role { font-size: 12px; color: var(--accent2); margin-top: 4px; }
+  .club-offer-manager { font-size: 13px; color: var(--text); margin-top: 8px; font-weight: 600; }
+  .club-offer-tags { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+  .club-offer-tags .tag { font-size: 10px; padding: 2px 6px; background: var(--card); border: 1px solid var(--line); border-radius: 4px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .club-offer-project { font-size: 12px; color: var(--muted); margin-top: 4px; font-style: italic; }
+  .club-assigned-manager { font-size: 13px; color: var(--text); margin-top: 8px; font-weight: 600; }
+  .club-assigned-project { font-size: 12px; color: var(--muted); margin-top: 4px; font-style: italic; }
+  .confirm-body { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 700px) { .confirm-body { grid-template-columns: 1fr; } }
+  .radar-wrap { display: flex; justify-content: center; align-items: center; min-height: 240px; }
+  .traits-block { margin-top: 14px; }
+  .traits-block h3 { color: var(--accent2); font-size: 15px; margin-bottom: 8px; }
+  .traits-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .trait-chip { display: inline-block; background: var(--card2); border: 1px solid var(--line); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: help; }
+  .legacy-radar { display: flex; justify-content: center; margin-top: 18px; }
+  .roll-result { font-size: 28px; font-weight: 900; color: var(--accent); text-align: center; padding: 30px 0; }
+  .roll-placeholder { color: var(--muted); text-align: center; padding: 30px 0; font-style: italic; }
+  .career-pos { display: inline-block; background: var(--gold); color: #2a1c00; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 11px; margin-left: 4px; }
+  .career-contract { display: inline-block; background: var(--card2); border: 1px solid var(--line); padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; color: var(--accent2); margin-left: 4px; }
 </style>
 </head>
 <body>
 <div class="wrap">
+
+  <!-- ================= SCREEN 1b: DIFFICULTY ================= -->
+  <section id="screen-difficulty" class="screen">
+    <div class="hero">
+      <h2>SELECT DIFFICULTY</h2>
+      <div class="sub" style="margin-bottom:24px">Choose your challenge level</div>
+      <div class="difficulty-grid">
+        <button class="btn difficulty-card btn-difficulty" data-difficulty="easy">
+          <div class="diff-name">EASY</div>
+          <div class="diff-detail">3 rerolls · all attributes visible</div>
+        </button>
+        <button class="btn difficulty-card btn-difficulty" data-difficulty="medium">
+          <div class="diff-name">MEDIUM</div>
+          <div class="diff-detail">1 reroll · all attributes visible</div>
+        </button>
+        <button class="btn difficulty-card btn-difficulty" data-difficulty="hard">
+          <div class="diff-name">HARD</div>
+          <div class="diff-detail">0 rerolls · all attributes visible</div>
+        </button>
+        <button class="btn difficulty-card btn-difficulty" data-difficulty="impossible">
+          <div class="diff-name">IMPOSSIBLE</div>
+          <div class="diff-detail">0 rerolls · names only, no attributes</div>
+        </button>
+      </div>
+      <div style="margin-top:20px"><button class="btn" onclick="document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-welcome').classList.add('active')">← Back</button></div>
+    </div>
+  </section>
 
   <!-- ================= SCREEN 1: WELCOME ================= -->
   <section id="screen-welcome" class="screen active">
@@ -258,8 +326,11 @@
       <h1>FOOTBALL DNA SIMULATOR ⚽</h1>
       <div class="sub">Build a striker from 8 different football eras</div>
       <div class="goal">🎯 GOAL: 1000 CAREER GOALS</div>
+      <div id="continue-box" style="display:none; margin-bottom: 14px;">
+        <button class="btn primary big" id="btn-continue">▶ CONTINUE CAREER</button>
+      </div>
       <div><button class="btn primary big" id="btn-start">START CREATION</button></div>
-      <div class="sub" style="font-size:13px">Alpha 1.1 — hidden influence · free selection · league tables · honours</div>
+      <div class="sub" style="font-size:13px">Alpha 1.2 — positions · build rolls · contracts · hidden traits · attribute evolution · radar charts</div>
       <div class="features">
         <div class="feature"><b>Free-Order Draft</b><br/>Spin a squad &amp; era, then choose which attribute to draft — in any order.</div>
         <div class="feature"><b>Hidden Influence</b><br/>Every donor secretly nudges your other stats. Real trade-offs, unique players.</div>
@@ -314,6 +385,8 @@
         <div class="hdr-stat">Age <b id="hdr-age">17</b></div>
         <div class="hdr-stat">Goals <b id="hdr-goals">0</b></div>
         <div class="hdr-stat">Club <b id="hdr-club">—</b></div>
+        <div class="hdr-stat">Pos <b id="hdr-position">ST</b></div>
+        <div class="hdr-stat">Contract <b id="hdr-contract">3yr</b></div>
         <div class="hdr-stat">Rep <b id="hdr-rep">Unknown</b></div>
       </div>
     </div>
@@ -347,7 +420,7 @@
     </div>
   </section>
 
-  <div class="footer-note">Football DNA Simulator · Alpha 1.1 · Inspired by 38-0.app · Premier League donor data (1992–2024 real squads, peak ratings) is editable in <code>data.js</code>.</div>
+  <div class="footer-note">Football DNA Simulator · Alpha 1.2 · Inspired by 38-0.app · Premier League donor data (1992–2024 real squads, peak ratings) is editable in <code>data.js</code>.</div>
 </div>
 
 <script src="data.js"></script>
